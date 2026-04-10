@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Location Permissions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    
+
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Exact alarm for watchdog restart after process kill -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Background Service Permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    
+    <!-- Sensor Permissions -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+    
+    <!-- Notification Permission (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- Android Auto Permissions -->
+    <uses-permission android:name="androidx.car.app.MAP_TEMPLATES" />
+    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
+    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
+    
+    <!-- Hardware Features -->
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.compass" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.barometer" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+    <application
+        android:name=".TripTrackerApp"
+        android:allowBackup="true"
+        android:icon="@android:drawable/ic_menu_mylocation"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.TripTracker"
+        tools:targetApi="31">
+
+        <!-- FileProvider for sharing log files via email -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
+
+        <!-- Android Auto app descriptor -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="5" />
+
+        <!-- Android Auto Car App Service -->
+        <service
+            android:name=".auto.TripTrackerCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
+            </intent-filter>
+        </service>
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.TripTracker.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Trip History Activity -->
+        <activity
+            android:name=".ui.TripHistoryActivity"
+            android:exported="false"
+            android:label="Trip History"
+            android:parentActivityName=".ui.MainActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Route View Activity -->
+        <activity
+            android:name=".ui.RouteViewActivity"
+            android:exported="false"
+            android:label="Route Details"
+            android:parentActivityName=".ui.TripHistoryActivity"
+            android:screenOrientation="portrait" />
+        
+        <!-- Daily Locations Activity -->
+        <activity
+            android:name=".ui.DailyLocationsActivity"
+            android:exported="false"
+            android:label="Daily Locations"
+            android:parentActivityName=".ui.MainActivity"
+            android:screenOrientation="portrait" />
+        
+        <!-- Geofence Settings Activity -->
+        <activity
+            android:name=".ui.GeofenceSettingsActivity"
+            android:exported="false"
+            android:label="Geofence Zones"
+            android:parentActivityName=".ui.SettingsActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Notification Settings Activity -->
+        <activity
+            android:name=".ui.NotificationSettingsActivity"
+            android:exported="false"
+            android:label="Notifications"
+            android:parentActivityName=".ui.SettingsActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Day Details Activity -->
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:label="Settings"
+            android:parentActivityName=".ui.MainActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.DayDetailsActivity"
+            android:exported="false"
+            android:label="Day Details"
+            android:parentActivityName=".ui.DailyLocationsActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Location Tracking Service -->
+        <service
+            android:name=".services.LocationTrackingService"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="true"
+            android:foregroundServiceType="location"
+            android:stopWithTask="false" />
+
+        <!-- Boot Receiver - Auto-start tracking on device boot -->
+        <receiver
+            android:name=".receivers.BootReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:directBootAware="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Daily Reminder Receiver - 6 AM push to check yesterday's route -->
+        <receiver
+            android:name=".receivers.DailyReminderReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Daily Log Sender Receiver - 12 PM auto-send logs via email -->
+        <receiver
+            android:name=".receivers.DailyLogSenderReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Geofence Broadcast Receiver -->
+        <receiver
+            android:name=".geofence.GeofenceBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true" />
+
+    </application>
+
+</manifest>

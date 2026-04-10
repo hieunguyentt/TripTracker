@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:opacity="opaque">
+    
+    <!-- Blue background (matching CarMD Connect) -->
+    <item android:drawable="@color/header_blue" />
+    
+    <!-- App icon/logo in center (optional) -->
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@android:drawable/ic_menu_mylocation" />
+    </item>
+    
+</layer-list>

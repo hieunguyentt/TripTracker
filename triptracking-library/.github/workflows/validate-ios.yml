@@ -1,0 +1,15 @@
+name: Validate iOS Podspec
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate podspec
+        run: pod spec lint ios/triptracking.podspec --allow-warnings

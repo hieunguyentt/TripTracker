@@ -1,0 +1,23 @@
+name: Validate Flutter Plugin
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - '*.*.*'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+
+      - name: Flutter analyze
+        working-directory: flutter_plugin
+        run: |
+          flutter pub get
+          flutter analyze

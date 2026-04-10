@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="48dp"
+    android:viewportWidth="36"
+    android:viewportHeight="48">
+
+    <!-- Pin body (green) -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M18,0 C9.163,0 2,7.163 2,16 C2,27 18,48 18,48 C18,48 34,27 34,16 C34,7.163 26.837,0 18,0 Z" />
+
+    <!-- Pin inner circle (white) — drawn as path since <circle> is unsupported -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,8 A8,8 0 1,0 18,24 A8,8 0 1,0 18,8 Z" />
+
+    <!-- "S" letter (green) -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M21.5,13.2 C21.2,12.1 20.2,11.5 18.5,11.5 C16.8,11.5 15.8,12.2 15.8,13.3 C15.8,14.2 16.4,14.7 17.8,15 L19.5,15.4 C21.5,15.8 22.5,16.8 22.5,18.3 C22.5,20.1 21,21.2 18.5,21.2 C16.2,21.2 14.7,20.2 14.5,18.5 L15.8,18.2 C16,19.4 17,20.1 18.5,20.1 C20.2,20.1 21.2,19.4 21.2,18.3 C21.2,17.4 20.6,16.9 19.2,16.6 L17.5,16.2 C15.7,15.8 14.5,14.8 14.5,13.3 C14.5,11.6 16,10.4 18.5,10.4 C20.7,10.4 22.1,11.4 22.4,13 L21.5,13.2 Z" />
+
+</vector>

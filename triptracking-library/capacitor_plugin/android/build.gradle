@@ -1,0 +1,29 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.carmd.triptracking.capacitor'
+    compileSdkVersion 34
+    defaultConfig { minSdkVersion 21 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+repositories {
+    google(); mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/hieunguyentt/triptracking-library")
+        credentials {
+            username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user")
+            password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
+        }
+    }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation 'com.github.hieunguyentt:triptracking-library-android:1.0.0'
+}
