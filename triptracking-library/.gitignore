@@ -1,0 +1,37 @@
+# Android
+.gradle/
+build/
+local.properties
+*.aar
+*.iml
+.idea/
+captures/
+.cxx/
+
+# iOS
+Pods/
+*.xcworkspace
+DerivedData/
+xcuserdata/
+*.pbxuser
+*.mode1v3
+*.xcuserstate
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+
+# Capacitor
+node_modules/
+dist/
+www/
+
+# System
+.DS_Store
+Thumbs.db
+.env
+*.env.local
+gpr.properties
