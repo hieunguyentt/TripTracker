@@ -4,7 +4,8 @@ TripTracker is a GPS-based trip tracking and navigation application designed for
 Cross-platform library for iOS, Android, Flutter, Ionic
 
 # TripTracking Library — Integration Guide
--------
+
+---
 
 ## 📱 Android Native App
 
@@ -64,11 +65,34 @@ Android Studio → File → Sync Project with Gradle Files
 ```java
 import com.carmd.triptracking.TripTracking;
 
-// Start tracking
-TripTracking.getInstance().startTracking();
+TripTracking sdk = TripTracking.getInstance();
 
-// Stop tracking
-TripTracking.getInstance().stopTracking();
+// Navigation
+sdk.openSettings();
+sdk.openNotificationSettings();
+sdk.openGeofenceManager();
+
+// Tracking
+sdk.getTrackingStatus();
+sdk.getCurrentLocation();
+sdk.getTripHistory();
+
+// Settings
+sdk.getSettings();
+sdk.updateSetting(key, value);
+
+// Geofence
+sdk.getGeofenceZones();
+sdk.addGeofenceZone(zone);
+sdk.removeGeofenceZone(zoneId);
+
+// Web Monitor
+sdk.startWebMonitor();
+sdk.stopWebMonitor();
+
+// Logs
+sdk.sendTodayLog();
+sdk.sendAllLogs();
 ```
 
 ### Step 5: Run app
@@ -122,11 +146,34 @@ open YourApp.xcworkspace
 ```swift
 import triptracking
 
-// Start tracking
-TripTracking().startTracking()
+let sdk = TripTracking()
 
-// Stop tracking
-TripTracking().stopTracking()
+// Navigation
+sdk.openSettings()
+sdk.openNotificationSettings()
+sdk.openGeofenceManager()
+
+// Tracking
+sdk.getTrackingStatus()
+sdk.getCurrentLocation()
+sdk.getTripHistory()
+
+// Settings
+sdk.getSettings()
+sdk.updateSetting(key: key, value: value)
+
+// Geofence
+sdk.getGeofenceZones()
+sdk.addGeofenceZone(zone: zone)
+sdk.removeGeofenceZone(zoneId: zoneId)
+
+// Web Monitor
+sdk.startWebMonitor()
+sdk.stopWebMonitor()
+
+// Logs
+sdk.sendTodayLog()
+sdk.sendAllLogs()
 ```
 
 ### Step 7: Run app
@@ -188,14 +235,32 @@ cd ios && pod install && cd ..
 ```dart
 import 'package:triptracking_flutter/triptracking_flutter.dart';
 
-// Start tracking
-await TripTrackingFlutter.startTracking();
+// Navigation
+await TripTrackingFlutter.openSettings();
+await TripTrackingFlutter.openNotificationSettings();
+await TripTrackingFlutter.openGeofenceManager();
 
-// Stop tracking
-await TripTrackingFlutter.stopTracking();
+// Tracking
+final status = await TripTrackingFlutter.getTrackingStatus();
+final location = await TripTrackingFlutter.getCurrentLocation();
+final history = await TripTrackingFlutter.getTripHistory();
 
-// Get current trip
-final trip = await TripTrackingFlutter.getCurrentTrip();
+// Settings
+final settings = await TripTrackingFlutter.getSettings();
+await TripTrackingFlutter.updateSetting(key: key, value: value);
+
+// Geofence
+final zones = await TripTrackingFlutter.getGeofenceZones();
+await TripTrackingFlutter.addGeofenceZone(zone);
+await TripTrackingFlutter.removeGeofenceZone(zoneId);
+
+// Web Monitor
+await TripTrackingFlutter.startWebMonitor();
+await TripTrackingFlutter.stopWebMonitor();
+
+// Logs
+await TripTrackingFlutter.sendTodayLog();
+await TripTrackingFlutter.sendAllLogs();
 ```
 
 ### Step 7: Run app
@@ -246,19 +311,32 @@ GITHUB_TOKEN=your_github_token
 ```typescript
 import { TripTracking } from 'triptracking-capacitor';
 
-// Start tracking
-await TripTracking.startTracking();
+// Navigation
+await TripTracking.openSettings();
+await TripTracking.openNotificationSettings();
+await TripTracking.openGeofenceManager();
 
-// Stop tracking
-await TripTracking.stopTracking();
+// Tracking
+const { status } = await TripTracking.getTrackingStatus();
+const { location } = await TripTracking.getCurrentLocation();
+const { history } = await TripTracking.getTripHistory();
 
-// Get current trip
-const { trip } = await TripTracking.getCurrentTrip();
+// Settings
+const { settings } = await TripTracking.getSettings();
+await TripTracking.updateSetting({ key: key, value: value });
 
-// Listen for location updates
-await TripTracking.addListener('locationUpdate', (location) => {
-  console.log(location.lat, location.lng, location.speed);
-});
+// Geofence
+const { zones } = await TripTracking.getGeofenceZones();
+await TripTracking.addGeofenceZone({ zone });
+await TripTracking.removeGeofenceZone({ zoneId });
+
+// Web Monitor
+await TripTracking.startWebMonitor();
+await TripTracking.stopWebMonitor();
+
+// Logs
+await TripTracking.sendTodayLog();
+await TripTracking.sendAllLogs();
 ```
 
 ### Step 6: Build Ionic app
