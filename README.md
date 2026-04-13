@@ -7,7 +7,7 @@ Cross-platform library for iOS, Android, Flutter, Ionic
 gradleimplementation 'com.github.hieunguyentt:triptracking-android:1.0.0'
 
 # iOS Native
-rubypod 'triptracking', :git => 'https://github.com/hieunguyentt/TripTracker.git', :tag => '1.0.0'
+pod 'triptracking', :git => 'https://github.com/hieunguyentt/TripTracker.git', :tag => '1.0.0'
 
 # Flutter
 dependencies:
