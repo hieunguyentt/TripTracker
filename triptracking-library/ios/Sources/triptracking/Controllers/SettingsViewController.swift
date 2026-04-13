@@ -520,17 +520,12 @@ class SettingsViewController: UIViewController {
         let enabled = webMonitorSwitch.isOn
         UserDefaults.standard.set(enabled, forKey: "tt_webMonitorEnabled")
 
-        if let appDelegate = UIApplication.shared.delegate as? AppDelegate {
-            if enabled {
-                if appDelegate.webServer == nil {
-                    appDelegate.webServer = LocationWebServer()
-                }
-                appDelegate.webServer?.start()
-                showToast("🌐 Web Monitor started")
-            } else {
-                appDelegate.webServer?.stop()
-                showToast("🌐 Web Monitor stopped — battery saving")
-            }
+        if enabled {
+            TripTrackerSDK.startWebMonitor()
+            showToast("🌐 Web Monitor started")
+        } else {
+            TripTrackerSDK.stopWebMonitor()
+            showToast("🌐 Web Monitor stopped — battery saving")
         }
     }
 

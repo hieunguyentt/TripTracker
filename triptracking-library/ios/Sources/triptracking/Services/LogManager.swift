@@ -15,7 +15,6 @@
 
 import Foundation
 import UIKit
-import MessageUI
 
 class LogManager: NSObject {
 
@@ -170,13 +169,8 @@ class LogManager: NSObject {
         lastAutoSendDate = UserDefaults.standard.string(forKey: "tt_lastAutoSendLogDate") ?? ""
     }
 
-    /// Present the mail composer auto-filled with today's log.
+    /// Auto-send today's log via share sheet at 23:59.
     private func presentAutoSendEmail() {
-        guard MFMailComposeViewController.canSendMail() else {
-            print("📧 Cannot auto-send — no email account configured")
-            return
-        }
-
         guard let topVC = Self.topViewController() else {
             print("📧 Cannot auto-send — no visible view controller")
             return
@@ -192,31 +186,29 @@ class LogManager: NSObject {
         }
 
         let todayStr = dateFormatter.string(from: Date())
-        let mail = MFMailComposeViewController()
-        mail.mailComposeDelegate = self
-        mail.setToRecipients([Self.defaultEmail])
-        mail.setSubject("TripTracker Daily Log — \(todayStr)")
-
         let logFiles = getAllLogFiles()
-        mail.setMessageBody(
-            "TripTracker daily log auto-sent at 23:59.\n\n"
-            + "Date: \(todayStr)\n"
+
+        let description = "TripTracker Daily Log — \(todayStr)\n\n"
             + "Log files: \(logFiles.count)\n"
             + "Total size: \(totalLogSize())\n"
             + "Device: \(UIDevice.current.name)\n"
-            + "iOS: \(UIDevice.current.systemVersion)\n",
-            isHTML: false
-        )
+            + "iOS: \(UIDevice.current.systemVersion)"
 
-        // Attach today's log file (primary) and recent files
-        for file in logFiles.prefix(3) {
-            if let data = try? Data(contentsOf: file) {
-                mail.addAttachmentData(data, mimeType: "text/plain", fileName: file.lastPathComponent)
-            }
+        var items: [Any] = [description]
+        items.append(contentsOf: Array(logFiles.prefix(3)))
+
+        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        activityVC.excludedActivityTypes = [.assignToContact, .addToReadingList]
+        activityVC.setValue("TripTracker Daily Log — \(todayStr)", forKey: "subject")
+
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = topVC.view
+            popover.sourceRect = CGRect(x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
         }
 
-        topVC.present(mail, animated: true)
-        print("📧 Auto-send email composer presented")
+        topVC.present(activityVC, animated: true)
+        print("📧 Auto-send share sheet presented")
     }
 
     /// Find the topmost visible view controller.
@@ -375,22 +367,4 @@ class LogManager: NSObject {
     }
 }
 
-// MARK: - MFMailComposeViewControllerDelegate
 
-extension LogManager: MFMailComposeViewControllerDelegate {
-    func mailComposeController(_ controller: MFMailComposeViewController,
-                               didFinishWith result: MFMailComposeResult,
-                               error: Error?) {
-        controller.dismiss(animated: true)
-        switch result {
-        case .sent:
-            print("📧 Auto-send email sent successfully")
-        case .failed:
-            print("📧 Auto-send email failed: \(error?.localizedDescription ?? "unknown")")
-        case .cancelled:
-            print("📧 Auto-send email cancelled by user")
-        default:
-            break
-        }
-    }
-}

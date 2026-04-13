@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.application'
+    id 'com.android.library'
     id 'maven-publish'
 }
 
@@ -8,12 +8,12 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.carmd.triptracking"
         minSdk 24
         targetSdk 34
-        versionCode 16
         versionName "1.0.0"
+        // ← xóa versionCode, không cần cho library
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
     }
 
     buildTypes {
@@ -53,7 +53,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
-    // Android Auto - Car App Library
     implementation 'androidx.car.app:app:1.7.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
@@ -64,19 +63,20 @@ afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-                from components.release
-                groupId   = 'com.github.hieunguyentt'
-                artifactId = 'triptracking-library-android'
-                version   = '1.0.0'
+                from components.release  // ← không nested afterEvaluate nữa
+                groupId    = 'com.github.hieunguyentt'
+                artifactId = 'triptracking-android'
+                version    = '1.0.0'
             }
         }
         repositories {
             maven {
                 name = "GitHubPackages"
-                url  = uri("https://maven.pkg.github.com/hieunguyentt/TripTracker/triptracking-library")
+                // ← URL đúng theo repo của bạn
+                url  = uri("https://maven.pkg.github.com/hieunguyentt/TripTracker")
                 credentials {
-                    username = System.getenv("GITHUB_ACTOR")
-                    password = System.getenv("GITHUB_TOKEN")
+                    username = project.findProperty("GITHUB_ACTOR") ?: System.getenv("GITHUB_ACTOR")
+                    password = project.findProperty("GITHUB_TOKEN") ?: System.getenv("GITHUB_TOKEN")
                 }
             }
         }

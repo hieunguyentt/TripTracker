@@ -9,13 +9,15 @@
 import Foundation
 import Network
 
-class LocationWebServer {
+public class LocationWebServer {
     
     private var listener: NWListener?
     private let port: NWEndpoint.Port = 8080
     private var connections: [NWConnection] = []
+
+    public init() {}
     
-    func start() {
+    public func start() {
         do {
             // Configure TCP parameters — allow port reuse so the server
             // can restart cleanly after an app backgrounding cycle.
@@ -55,7 +57,7 @@ class LocationWebServer {
         }
     }
     
-    func stop() {
+    public func stop() {
         listener?.cancel()
         connections.forEach { $0.cancel() }
         connections.removeAll()
