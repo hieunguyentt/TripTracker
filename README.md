@@ -5,8 +5,6 @@ Cross-platform library for iOS, Android, Flutter, Ionic
 
 # TripTracking Library — Integration Guide
 
---------------------------------------------
-
 ## 📱 Android Native App
 
 ### Prerequisites
