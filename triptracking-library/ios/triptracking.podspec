@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.swift_version         = '5.9'
   s.ios.deployment_target = '14.0'
 
-  s.source_files = 'triptracking-library/ios/Sources/triptracking/**/*.swift'
+  s.source_files = 'Sources/triptracking/**/*.swift'
 
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'
