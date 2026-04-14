@@ -7,13 +7,13 @@ android {
     namespace 'com.carmd.triptracking'
     compileSdk 34
 
-    // sourceSets {
-    //     main {
-    //         java.srcDirs = ['app/src/main/java']
-    //         res.srcDirs  = ['app/src/main/res']
-    //         manifest.srcFile 'app/src/main/AndroidManifest.xml'
-    //     }
-    // }
+    sourceSets {
+        main {
+            java.srcDirs = ['src/main/java']
+            res.srcDirs  = ['src/main/res']
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+        }
+    }
 
     defaultConfig {
         minSdk 24
@@ -74,7 +74,7 @@ afterEvaluate {
                 from components.release  // ← không nested afterEvaluate nữa
                 groupId    = 'com.github.hieunguyentt'
                 artifactId = 'triptracking-android'
-                version    = '1.0.3'
+                version    = '1.0.4'
             }
         }
         repositories {
