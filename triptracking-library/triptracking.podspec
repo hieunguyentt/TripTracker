@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'triptracking'
-  s.version          = '1.0.0'
+  s.version          = '1.0.5'
   s.summary      = 'GPS trip tracking library for iOS — auto-trip, geofencing, CarPlay, voice feedback.'
   s.description  = <<-DESC
     TripTracker is a drop-in iOS library for GPS-based trip tracking.
@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.swift_version         = '5.9'
   s.ios.deployment_target = '14.0'
 
-  s.source_files = 'triptracking-library/ios/Sources/triptracking/**/*.swift'
+  s.source_files = 'ios/Sources/triptracking/**/*.swift'
 
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'
