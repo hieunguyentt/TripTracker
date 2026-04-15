@@ -6,8 +6,8 @@
   "module": "capacitor_plugin/dist/esm/index.js",
   "types": "capacitor_plugin/dist/esm/index.d.ts",
   "capacitor": {
-    "ios": { "src": "capacitor_plugin/ios" },
-    "android": { "src": "capacitor_plugin/android" }
+    "ios": { "src": "triptracking-library/capacitor_plugin/ios" },
+    "android": { "src": "triptracking-library/capacitor_plugin/android" }
   },
   "unpkg": "dist/plugin.js",
   "files": ["dist/", "ios/", "android/", "src/"],
@@ -18,7 +18,7 @@
     "watch": "tsc --watch"
   },
   "peerDependencies": {
-    "@capacitor/core": "^5.0.0 || ^6.0.0"
+    "@capacitor/core": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
   },
   "devDependencies": {
     "@capacitor/core": "^6.0.0",
