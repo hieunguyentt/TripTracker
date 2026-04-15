@@ -7,6 +7,7 @@
 #import <Capacitor/Capacitor.h>
 
 CAP_PLUGIN(TripTrackerPlugin, "TripTracker",
+    CAP_PLUGIN_METHOD(initializeWithConfig, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(openSettings, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(openNotificationSettings, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(openGeofenceManager, CAPPluginReturnPromise);

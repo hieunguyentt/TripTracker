@@ -68,6 +68,59 @@ public class TripTrackerCapPlugin extends Plugin {
     // ═══════════════════════════════════════════════════════════════════
 
     @PluginMethod
+    public void initializeWithConfig(PluginCall call) {
+        TripTrackerSDK.Config config = new TripTrackerSDK.Config();
+
+        Double saveInterval = call.getDouble("saveIntervalMinutes");
+        if (saveInterval != null) config.saveIntervalMinutes = saveInterval;
+
+        Double saveDist = call.getDouble("saveDistanceMeters");
+        if (saveDist != null) config.saveDistanceMeters = saveDist;
+
+        Double vehicleThresh = call.getDouble("vehicleThreshold");
+        if (vehicleThresh != null) config.vehicleThreshold = vehicleThresh.floatValue();
+
+        Integer transport = call.getInt("transportType");
+        if (transport != null) config.transportType = transport;
+
+        Double autoStop = call.getDouble("autoStopTimeoutMinutes");
+        if (autoStop != null) config.autoStopTimeoutMinutes = autoStop;
+
+        Double routeGap = call.getDouble("routeGapMeters");
+        if (routeGap != null) config.routeGapMeters = routeGap;
+
+        Boolean geofence = call.getBoolean("geofenceEnabled");
+        if (geofence != null) config.geofenceEnabled = geofence;
+
+        Boolean webMon = call.getBoolean("webMonitorEnabled");
+        if (webMon != null) config.webMonitorEnabled = webMon;
+
+        Boolean voice = call.getBoolean("voiceFeedbackEnabled");
+        if (voice != null) config.voiceFeedbackEnabled = voice;
+
+        Boolean nStart = call.getBoolean("notifyTripStart");
+        if (nStart != null) config.notifyTripStart = nStart;
+
+        Boolean nEnd = call.getBoolean("notifyTripEnd");
+        if (nEnd != null) config.notifyTripEnd = nEnd;
+
+        Boolean nDist = call.getBoolean("notifyDistanceKm");
+        if (nDist != null) config.notifyDistanceKm = nDist;
+
+        Boolean nEnter = call.getBoolean("notifyGeofenceEnter");
+        if (nEnter != null) config.notifyGeofenceEnter = nEnter;
+
+        Boolean nExit = call.getBoolean("notifyGeofenceExit");
+        if (nExit != null) config.notifyGeofenceExit = nExit;
+
+        TripTrackerSDK.initialize(getContext(), config);
+
+        JSObject ret = new JSObject();
+        ret.put("initialized", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void openSettings(PluginCall call) {
         launchActivity(SettingsActivity.class);
         JSObject ret = new JSObject();

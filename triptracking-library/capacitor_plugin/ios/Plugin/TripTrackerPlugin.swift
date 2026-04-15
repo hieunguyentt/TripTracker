@@ -23,6 +23,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "TripTrackerPlugin"
     public let jsName = "TripTracker"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "initializeWithConfig", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openGeofenceManager", returnType: CAPPluginReturnPromise),
@@ -44,6 +45,28 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     // MARK: - Native Settings Pages
+
+    /// Initialize SDK with custom config from JavaScript.
+    @objc func initializeWithConfig(_ call: CAPPluginCall) {
+        var config = TripTrackerConfig()
+        if let v = call.getDouble("saveIntervalMinutes")   { config.saveIntervalMinutes = v }
+        if let v = call.getDouble("saveDistanceMeters")    { config.saveDistanceMeters = v }
+        if let v = call.getDouble("vehicleThreshold")      { config.vehicleThreshold = Float(v) }
+        if let v = call.getInt("transportType")             { config.transportType = v }
+        if let v = call.getDouble("autoStopTimeoutMinutes") { config.autoStopTimeoutMinutes = v }
+        if let v = call.getDouble("routeGapMeters")         { config.routeGapMeters = v }
+        if let v = call.getBool("geofenceEnabled")          { config.geofenceEnabled = v }
+        if let v = call.getBool("webMonitorEnabled")        { config.webMonitorEnabled = v }
+        if let v = call.getBool("voiceFeedbackEnabled")     { config.voiceFeedbackEnabled = v }
+        if let v = call.getBool("notifyTripStart")          { config.notifyTripStart = v }
+        if let v = call.getBool("notifyTripEnd")            { config.notifyTripEnd = v }
+        if let v = call.getBool("notifyDistanceKm")         { config.notifyDistanceKm = v }
+        if let v = call.getBool("notifyGeofenceEnter")      { config.notifyGeofenceEnter = v }
+        if let v = call.getBool("notifyGeofenceExit")       { config.notifyGeofenceExit = v }
+
+        TripTrackerSDK.initialize(config: config)
+        call.resolve(["initialized": true])
+    }
 
     /// Open the full native Settings page (sliders, toggles, everything).
     @objc func openSettings(_ call: CAPPluginCall) {

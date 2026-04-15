@@ -862,6 +862,7 @@ class LocationTrackingService: NSObject {
 
     /// Called from onMotionStateChanged on every CMMotionActivity transition.
     private func evaluateAutoTrip(from prev: MotionState, to next: MotionState) {
+        let speed = effectiveSpeed()
 
         switch next {
         case .automotive:

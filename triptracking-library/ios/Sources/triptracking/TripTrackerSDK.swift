@@ -1,205 +1,159 @@
-//
-//  TripTrackerSDK.swift
-//  TripTracker Library
-//
-//  Single entry point for the TripTracker library.
-//  Host app calls these methods from their own AppDelegate / SceneDelegate.
-//
-//  ──────────────────────────────────────────────────────────────────────
-//  QUICK START — Add these to YOUR AppDelegate:
-//  ──────────────────────────────────────────────────────────────────────
-//
-//  import TripTracker   // or just include the source files
-//
-//  func application(_ app: UIApplication,
-//      didFinishLaunchingWithOptions opts: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-//      TripTrackerSDK.initialize(launchOptions: opts)
-//      return true
-//  }
-//
-//  func applicationDidEnterBackground(_ app: UIApplication) {
-//      TripTrackerSDK.didEnterBackground()
-//  }
-//
-//  func applicationWillTerminate(_ app: UIApplication) {
-//      TripTrackerSDK.willTerminate()
-//  }
-//
-//  // CarPlay support (optional):
-//  func application(_ app: UIApplication,
-//      configurationForConnecting session: UISceneSession,
-//      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-//      return TripTrackerSDK.sceneConfiguration(for: session)
-//  }
-//  ──────────────────────────────────────────────────────────────────────
-
 import UIKit
 import CoreLocation
 
+// MARK: - Configuration
+
+public struct TripTrackerConfig {
+
+    // Save & Tracking
+    public var saveIntervalMinutes: Double = 15.0
+    public var saveDistanceMeters: Double = 30.0
+    public var vehicleThreshold: Float = 6.0
+    public var transportType: Int = 0   // 0=Car, 1=Moto, 2=Bike, 3=Walk
+    public var autoStopTimeoutMinutes: Double = 5.0
+    public var routeGapMeters: Double = 500.0
+
+    // Features
+    public var geofenceEnabled: Bool = false
+    public var webMonitorEnabled: Bool = false
+    public var voiceFeedbackEnabled: Bool = true
+
+    // Notifications
+    public var notifyTripStart: Bool = true
+    public var notifyTripEnd: Bool = true
+    public var notifyDistanceKm: Bool = true
+    public var notifyGeofenceEnter: Bool = true
+    public var notifyGeofenceExit: Bool = true
+
+    public init() {}
+
+    public init(from dict: [String: Any]) {
+        if let v = dict["saveIntervalMinutes"] as? Double   { saveIntervalMinutes = v }
+        if let v = dict["saveDistanceMeters"] as? Double    { saveDistanceMeters = v }
+        if let v = dict["vehicleThreshold"] as? Double      { vehicleThreshold = Float(v) }
+        if let v = dict["transportType"] as? Int             { transportType = v }
+        if let v = dict["autoStopTimeoutMinutes"] as? Double { autoStopTimeoutMinutes = v }
+        if let v = dict["routeGapMeters"] as? Double         { routeGapMeters = v }
+        if let v = dict["geofenceEnabled"] as? Bool          { geofenceEnabled = v }
+        if let v = dict["webMonitorEnabled"] as? Bool        { webMonitorEnabled = v }
+        if let v = dict["voiceFeedbackEnabled"] as? Bool     { voiceFeedbackEnabled = v }
+        if let v = dict["notifyTripStart"] as? Bool          { notifyTripStart = v }
+        if let v = dict["notifyTripEnd"] as? Bool            { notifyTripEnd = v }
+        if let v = dict["notifyDistanceKm"] as? Bool         { notifyDistanceKm = v }
+        if let v = dict["notifyGeofenceEnter"] as? Bool      { notifyGeofenceEnter = v }
+        if let v = dict["notifyGeofenceExit"] as? Bool       { notifyGeofenceExit = v }
+    }
+}
+
+// MARK: - SDK
+
 public final class TripTrackerSDK {
 
-    /// Web server instance — kept alive by the SDK.
     public static var webServer: LocationWebServer?
+    private static var _initialized = false
+    public static var isInitialized: Bool { _initialized }
 
-    // MARK: - Initialization
-
-    /// Call from `application(_:didFinishLaunchingWithOptions:)`.
-    /// Sets up defaults, logging, database, GPS, geofencing, notifications, web server.
+    // ── Initialize with defaults ──
     public static func initialize(launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
+        initialize(config: TripTrackerConfig(), launchOptions: launchOptions)
+    }
 
-        // ── First-install defaults ──
-        UserDefaults.standard.register(defaults: [
-            "tt_voiceFeedbackEnabled": true,
-            "tt_webMonitorEnabled":    false,
-            "tt_saveIntervalSecs":     900.0,
-            "tt_saveDistanceVehicleM": 30.0,
-            "tt_autoEndStillnessSecs": 300.0,
-            "tt_transportType":        0,
-        ])
-
-        // Start log capture FIRST
-        LogManager.shared.start()
-
-        // Detect location relaunch
-        let isLocationRelaunch = launchOptions?[.location] != nil
-        if isLocationRelaunch {
-            print("🔄 App relaunched by iOS due to location event")
+    // ── Initialize with config ──
+    public static func initialize(config: TripTrackerConfig,
+                                  launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
+        guard !_initialized else {
+            applyConfig(config)
+            return
         }
 
-        // Initialize database
-        DatabaseManager.shared.initializeDatabase()
+        applyConfig(config)
+        LogManager.shared.start()
 
-        // Start background location
+        let isLocationRelaunch = launchOptions?[.location] != nil
+        DatabaseManager.shared.initializeDatabase()
         LocationTrackingService.shared.startBackgroundTracking()
 
-        // Handle active trip from before app was killed
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
-            if !wasAutoEnded {
-                print("♻️ App relaunched — resuming trip ID=\(info.id)")
-                LocationTrackingService.shared.resumeTrip(id: info.id, startTimeMs: info.startTimeMs)
-            }
+            if !wasAutoEnded { LocationTrackingService.shared.resumeTrip(id: info.id, startTimeMs: info.startTimeMs) }
         } else if isLocationRelaunch {
             LocationTrackingService.shared.handleSignificantLocationRelaunch()
         }
 
-        // Web server
         if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
-            webServer = LocationWebServer()
-            webServer?.start()
+            webServer = LocationWebServer(); webServer?.start()
         }
 
-        // Notifications
         NotificationManager.shared.requestPermission()
+        if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
-        // Geofencing
-        if GeofenceManager.shared.isEnabled {
-            GeofenceManager.shared.startMonitoringAll()
-        }
-
-        print("✅ TripTrackerSDK initialized")
+        _initialized = true
+        print("✅ TripTrackerSDK initialized — interval=\(config.saveIntervalMinutes)min dist=\(config.saveDistanceMeters)m autoStop=\(config.autoStopTimeoutMinutes)min")
     }
 
-    // MARK: - Lifecycle Hooks
+    // ── Apply config to UserDefaults + live services ──
+    public static func applyConfig(_ config: TripTrackerConfig) {
+        let ud = UserDefaults.standard
+        ud.set(config.saveIntervalMinutes * 60.0, forKey: "tt_saveIntervalSecs")
+        ud.set(config.saveDistanceMeters, forKey: "tt_saveDistanceVehicleM")
+        ud.set(config.vehicleThreshold, forKey: "tt_vehicleThreshold")
+        ud.set(config.transportType, forKey: "tt_transportType")
+        ud.set(config.autoStopTimeoutMinutes * 60.0, forKey: "tt_autoEndStillnessSecs")
+        ud.set(config.routeGapMeters, forKey: "tt_routeGapThresholdM")
+        ud.set(config.webMonitorEnabled, forKey: "tt_webMonitorEnabled")
+        ud.set(config.voiceFeedbackEnabled, forKey: "tt_voiceFeedbackEnabled")
+        ud.set(config.notifyTripStart, forKey: "tt_notify_tripStart")
+        ud.set(config.notifyTripEnd, forKey: "tt_notify_tripEnd")
+        ud.set(config.notifyDistanceKm, forKey: "tt_notify_distanceKm")
+        ud.set(config.notifyGeofenceEnter, forKey: "tt_notify_geofenceEnter")
+        ud.set(config.notifyGeofenceExit, forKey: "tt_notify_geofenceExit")
 
-    /// Call from `applicationDidEnterBackground`.
-    public static func didEnterBackground() {
-        LocationTrackingService.shared.ensureBackgroundTracking()
+        GeofenceManager.shared.isEnabled = config.geofenceEnabled
+
+        let svc = LocationTrackingService.shared
+        svc.vehicleThreshold = config.vehicleThreshold
+        svc.saveDistanceVehicleM = config.saveDistanceMeters
+        svc.saveIntervalMs = Int64(config.saveIntervalMinutes * 60 * 1000)
+        svc.autoEndStillnessSecs = config.autoStopTimeoutMinutes * 60.0
+        VoiceFeedbackManager.shared.isEnabled = config.voiceFeedbackEnabled
+
+        if config.webMonitorEnabled { startWebMonitor() } else { stopWebMonitor() }
+        if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
     }
 
-    /// Call from `applicationWillTerminate`.
-    public static func willTerminate() {
-        DatabaseManager.shared.saveContext()
-    }
+    // ── Lifecycle ──
+    public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
+    public static func willTerminate() { DatabaseManager.shared.saveContext() }
 
-    // MARK: - Scene Configuration (CarPlay)
-
-    /// Call from `application(_:configurationForConnecting:options:)`.
-    /// Returns the correct UISceneConfiguration for phone or CarPlay.
+    // ── Scene Configuration ──
     public static func sceneConfiguration(for session: UISceneSession) -> UISceneConfiguration {
         if session.role == UISceneSession.Role(rawValue: "CPTemplateApplicationSceneSessionRoleApplication") {
-            let config = UISceneConfiguration(name: "CarPlay Configuration", sessionRole: session.role)
-            config.delegateClass = CarPlaySceneDelegate.self
-            return config
+            let c = UISceneConfiguration(name: "CarPlay Configuration", sessionRole: session.role)
+            c.delegateClass = CarPlaySceneDelegate.self; return c
         }
-        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: session.role)
-        config.delegateClass = SceneDelegate.self
-        return config
+        let c = UISceneConfiguration(name: "Default Configuration", sessionRole: session.role)
+        c.delegateClass = SceneDelegate.self; return c
     }
 
-    // MARK: - Present Native Pages
-
-    /// Present the main TripTracker map view.
-    public static func presentMainView(from vc: UIViewController) {
-        let mainVC = MainViewController()
-        let nav = UINavigationController(rootViewController: mainVC)
-        nav.modalPresentationStyle = .fullScreen
+    // ── Present Native Pages ──
+    public static func presentMainView(from vc: UIViewController) { present(MainViewController(), from: vc) }
+    public static func presentSettings(from vc: UIViewController) { present(SettingsViewController(), from: vc) }
+    public static func presentNotificationSettings(from vc: UIViewController) { present(NotificationSettingsViewController(), from: vc) }
+    public static func presentGeofenceManager(from vc: UIViewController) { present(GeofenceViewController(), from: vc) }
+    public static func presentHistory(from vc: UIViewController) { present(HistoryViewController(), from: vc) }
+    public static func presentDailyLocations(from vc: UIViewController) { present(DailyLocationsViewController(), from: vc) }
+    private static func present(_ child: UIViewController, from vc: UIViewController) {
+        let nav = UINavigationController(rootViewController: child); nav.modalPresentationStyle = .fullScreen
         vc.present(nav, animated: true)
     }
 
-    /// Present the Settings page.
-    public static func presentSettings(from vc: UIViewController) {
-        let settingsVC = SettingsViewController()
-        let nav = UINavigationController(rootViewController: settingsVC)
-        nav.modalPresentationStyle = .fullScreen
-        vc.present(nav, animated: true)
-    }
-
-    /// Present the Notification Settings page (per-type push + voice).
-    public static func presentNotificationSettings(from vc: UIViewController) {
-        let notifVC = NotificationSettingsViewController()
-        let nav = UINavigationController(rootViewController: notifVC)
-        nav.modalPresentationStyle = .fullScreen
-        vc.present(nav, animated: true)
-    }
-
-    /// Present the Geofence Manager page (map + zones).
-    public static func presentGeofenceManager(from vc: UIViewController) {
-        let geoVC = GeofenceViewController()
-        let nav = UINavigationController(rootViewController: geoVC)
-        nav.modalPresentationStyle = .fullScreen
-        vc.present(nav, animated: true)
-    }
-
-    /// Present the Trip History page.
-    public static func presentHistory(from vc: UIViewController) {
-        let histVC = HistoryViewController()
-        let nav = UINavigationController(rootViewController: histVC)
-        nav.modalPresentationStyle = .fullScreen
-        vc.present(nav, animated: true)
-    }
-
-    /// Present Daily Locations page.
-    public static func presentDailyLocations(from vc: UIViewController) {
-        let dailyVC = DailyLocationsViewController()
-        let nav = UINavigationController(rootViewController: dailyVC)
-        nav.modalPresentationStyle = .fullScreen
-        vc.present(nav, animated: true)
-    }
-
-    // MARK: - Data Access (No UI)
-
+    // ── Data Access ──
     public static var isTracking: Bool { LocationTrackingService.shared.isTracking }
     public static var currentTripId: Int64 { LocationTrackingService.shared.currentTripId }
+    public static func getCurrentStats() -> (speed: Float, distance: Double, duration: Int64, steps: Int) { LocationTrackingService.shared.getCurrentStats() }
+    public static var lastKnownCoordinate: CLLocationCoordinate2D? { LocationTrackingService.shared.lastKnownCoordinate }
 
-    public static func getCurrentStats() -> (speed: Float, distance: Double, duration: Int64, steps: Int) {
-        LocationTrackingService.shared.getCurrentStats()
-    }
-
-    public static var lastKnownCoordinate: CLLocationCoordinate2D? {
-        LocationTrackingService.shared.lastKnownCoordinate
-    }
-
-    // MARK: - Web Monitor Control
-
-    public static func startWebMonitor() {
-        UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled")
-        if webServer == nil { webServer = LocationWebServer() }
-        webServer?.start()
-    }
-
-    public static func stopWebMonitor() {
-        UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled")
-        webServer?.stop()
-    }
+    // ── Web Monitor ──
+    public static func startWebMonitor() { UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled"); if webServer == nil { webServer = LocationWebServer() }; webServer?.start() }
+    public static func stopWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); webServer?.stop() }
 }

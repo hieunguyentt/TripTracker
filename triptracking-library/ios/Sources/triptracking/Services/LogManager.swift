@@ -169,46 +169,29 @@ class LogManager: NSObject {
         lastAutoSendDate = UserDefaults.standard.string(forKey: "tt_lastAutoSendLogDate") ?? ""
     }
 
-    /// Auto-send today's log via share sheet at 23:59.
     private func presentAutoSendEmail() {
         guard let topVC = Self.topViewController() else {
             print("📧 Cannot auto-send — no visible view controller")
             return
         }
-
-        // Don't present if another modal is already showing
         if topVC.presentedViewController != nil {
-            print("📧 Cannot auto-send — another modal is active, will retry in 60s")
             DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
                 self?.presentAutoSendEmail()
             }
             return
         }
-
         let todayStr = dateFormatter.string(from: Date())
         let logFiles = getAllLogFiles()
-
-        let description = "TripTracker Daily Log — \(todayStr)\n\n"
-            + "Log files: \(logFiles.count)\n"
-            + "Total size: \(totalLogSize())\n"
-            + "Device: \(UIDevice.current.name)\n"
-            + "iOS: \(UIDevice.current.systemVersion)"
-
-        var items: [Any] = [description]
+        let desc = "TripTracker Daily Log — \(todayStr)\nFiles: \(logFiles.count)"
+        var items: [Any] = [desc]
         items.append(contentsOf: Array(logFiles.prefix(3)))
-
-        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        activityVC.excludedActivityTypes = [.assignToContact, .addToReadingList]
-        activityVC.setValue("TripTracker Daily Log — \(todayStr)", forKey: "subject")
-
-        if let popover = activityVC.popoverPresentationController {
+        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        vc.setValue("TripTracker Daily Log — \(todayStr)", forKey: "subject")
+        if let popover = vc.popoverPresentationController {
             popover.sourceView = topVC.view
             popover.sourceRect = CGRect(x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
-            popover.permittedArrowDirections = []
         }
-
-        topVC.present(activityVC, animated: true)
-        print("📧 Auto-send share sheet presented")
+        topVC.present(vc, animated: true)
     }
 
     /// Find the topmost visible view controller.

@@ -14,9 +14,9 @@ public class LocationWebServer {
     private var listener: NWListener?
     private let port: NWEndpoint.Port = 8080
     private var connections: [NWConnection] = []
-
-    public init() {}
     
+    public init() {}
+
     public func start() {
         do {
             // Configure TCP parameters — allow port reuse so the server
