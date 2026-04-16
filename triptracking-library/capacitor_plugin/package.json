@@ -1,21 +1,20 @@
 {
   "name": "capacitor-trip-tracker",
-  "version": "1.0.10",
+  "version": "1.0.9",
   "description": "Capacitor plugin for TripTracker — GPS trip tracking, geofencing, voice feedback. iOS + Android.",
-  "main": "triptracking-library/capacitor_plugin/dist/plugin.js",
-  "module": "triptracking-library/capacitor_plugin/dist/esm/index.js",
-  "types": "triptracking-library/capacitor_plugin/dist/esm/index.d.ts",
+  "main": "dist/plugin.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
   "capacitor": {
-    "ios": { "src": "triptracking-library/capacitor_plugin/ios" },
-    "android": { "src": "triptracking-library/capacitor_plugin/android" }
+    "ios": { "src": "ios" },
+    "android": { "src": "android" }
   },
   "unpkg": "dist/plugin.js",
   "files": [
-	"triptracking-library/capacitor_plugin/dist/", 
-	"triptracking-library/capacitor_plugin/ios/", 
-	"triptracking-library/capacitor_plugin/android/", 
-	"triptracking-library/capacitor_plugin/src/",
-	"CapacitorTripTracker.podspec"
+	"dist/", 
+	"ios/", 
+	"android/", 
+	"src/"
 	],
   "keywords": ["capacitor", "plugin", "ios", "android", "triptracker", "gps", "geofence"],
   "scripts": {
