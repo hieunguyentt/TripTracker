@@ -285,11 +285,11 @@ public class TripTrackerCapPlugin extends Plugin {
         ret.put("webMonitorEnabled", AppSettings.isWebServerEnabled(ctx));
         ret.put("voiceFeedbackEnabled", AppSettings.isVoiceEnabled(ctx));
         ret.put("geofencingEnabled", GeofenceManager.isEnabled(ctx));
-        ret.put("notifyTripStart", AppSettings.isNotifEnabled(ctx, AppSettings.KEY_NOTIF_TRIP_START));
-        ret.put("notifyTripEnd", AppSettings.isNotifEnabled(ctx, AppSettings.KEY_NOTIF_TRIP_END));
-        ret.put("notifyDistanceKm", AppSettings.isNotifEnabled(ctx, AppSettings.KEY_NOTIF_DISTANCE_KM));
-        ret.put("notifyGeofenceEnter", AppSettings.isNotifEnabled(ctx, AppSettings.KEY_NOTIF_GEOFENCE_ENTER));
-        ret.put("notifyGeofenceExit", AppSettings.isNotifEnabled(ctx, AppSettings.KEY_NOTIF_GEOFENCE_EXIT));
+        ret.put("notifyTripStart", AppSettings.isNotifTripStart(ctx));
+        ret.put("notifyTripEnd", AppSettings.isNotifTripEnd(ctx));
+        ret.put("notifyDistanceKm", AppSettings.isNotifDistanceKm(ctx));
+        ret.put("notifyGeofenceEnter", AppSettings.isNotifGeofenceEnter(ctx));
+        ret.put("notifyGeofenceExit", AppSettings.isNotifGeofenceExit(ctx));
         call.resolve(ret);
     }
 
