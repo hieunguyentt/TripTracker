@@ -4,6 +4,10 @@ import type { TripTrackerPlugin } from './definitions';
 
 export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
 
+  async initializeWithConfig(): Promise<{ initialized: boolean }> {
+    throw this.unavailable('initializeWithConfig is only available on iOS/Android');
+  }
+
   async openSettings(): Promise<{ opened: boolean }> {
     throw this.unavailable('openSettings is only available on iOS');
   }

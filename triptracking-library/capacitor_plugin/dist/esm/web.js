@@ -1,5 +1,8 @@
 import { WebPlugin } from '@capacitor/core';
 export class TripTrackerWeb extends WebPlugin {
+    async initializeWithConfig() {
+        throw this.unavailable('initializeWithConfig is only available on iOS/Android');
+    }
     async openSettings() {
         throw this.unavailable('openSettings is only available on iOS');
     }

@@ -5,6 +5,21 @@
  * Provides: tracking status, settings pages, geofencing, notifications, logs.
  */
 export interface TripTrackerPlugin {
+    /**
+     * Initialize TripTracker SDK with custom config.
+     * Call once at app startup before using any other methods.
+     * Only the values you pass are changed — everything else stays at defaults.
+     *
+     * Defaults:
+     *   saveIntervalMinutes: 15, saveDistanceMeters: 30, vehicleThreshold: 6.0 (m/s),
+     *   transportType: 0 (Car), autoStopTimeoutMinutes: 5, routeGapMeters: 500,
+     *   geofenceEnabled: false, webMonitorEnabled: false, voiceFeedbackEnabled: true,
+     *   notifyTripStart: true, notifyTripEnd: true, notifyDistanceKm: true,
+     *   notifyGeofenceEnter: true, notifyGeofenceExit: true
+     */
+    initializeWithConfig(options?: TripTrackerConfigOptions): Promise<{
+        initialized: boolean;
+    }>;
     /** Open the full native Settings page (sliders, toggles, web monitor, CarPlay). */
     openSettings(): Promise<{
         opened: boolean;
@@ -151,4 +166,50 @@ export interface AddGeofenceOptions {
     notifyOnEnter?: boolean;
     notifyOnExit?: boolean;
     autoStopOnEnter?: boolean;
+}
+export interface TripTrackerConfigOptions {
+    /** Still/slow periodic save interval in minutes (default 15) */
+    saveIntervalMinutes?: number;
+    /** GPS save distance threshold in meters (default 30) */
+    saveDistanceMeters?: number;
+    /** Vehicle speed threshold in m/s (default 6.0 = 22 km/h) */
+    vehicleThreshold?: number;
+    /** Transport type: 0=Car, 1=Moto, 2=Bike, 3=Walk (default 0) */
+    transportType?: number;
+    /** Auto-stop timeout in minutes (default 5) */
+    autoStopTimeoutMinutes?: number;
+    /** Route gap threshold in meters (default 500) */
+    routeGapMeters?: number;
+    /** Enable geofence monitoring (default false) */
+    geofenceEnabled?: boolean;
+    /** Enable web monitor HTTP server (default false) */
+    webMonitorEnabled?: boolean;
+    /** Enable voice feedback (default true) */
+    voiceFeedbackEnabled?: boolean;
+    /** Enable push for trip start (default true) */
+    notifyTripStart?: boolean;
+    /** Enable push for trip end (default true) */
+    notifyTripEnd?: boolean;
+    /** Enable push every 1 km (default true) */
+    notifyDistanceKm?: boolean;
+    /** Enable push for geofence enter (default true) */
+    notifyGeofenceEnter?: boolean;
+    /** Enable push for geofence exit (default true) */
+    notifyGeofenceExit?: boolean;
+    /** POST endpoint for location pings, e.g. "https://api.example.com/ping/v2" */
+    pingURL?: string;
+    /** POST endpoint for trip end, e.g. "https://api.example.com/end" */
+    endURL?: string;
+    /** User ID sent with every API call */
+    userId?: string;
+    /** Vehicle ID sent with every API call */
+    vehicleId?: string;
+    /** OS info string (default auto-detected) */
+    osInfo?: string;
+    /** Route/trip ID sent with pings */
+    routeId?: string;
+    /** Value for AuthorizationKey header */
+    authorizationKey?: string;
+    /** Value for api-auth-key header */
+    apiAuthKey?: string;
 }

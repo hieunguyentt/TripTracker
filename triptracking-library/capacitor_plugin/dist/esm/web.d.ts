@@ -1,6 +1,9 @@
 import { WebPlugin } from '@capacitor/core';
 import type { TripTrackerPlugin } from './definitions';
 export declare class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
+    initializeWithConfig(): Promise<{
+        initialized: boolean;
+    }>;
     openSettings(): Promise<{
         opened: boolean;
     }>;
