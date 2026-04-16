@@ -269,26 +269,26 @@ public class LocationTrackingService extends Service implements
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        try {
-            if (isTracking) {
-                saveCheckpoint();
-                scheduleWatchdog();
-            }
-            cancelAutoStopTimer();
-            if (sensorTracker != null) sensorTracker.stopTracking();
-            stopSaveLoop();
-            if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
-            if (webServer != null) webServer.stop();
-            try {
-                com.carmd.triptracking.util.VoiceFeedback.getInstance(this).shutdown();
-            } catch (Exception e) { /* ignored */ }
-        } catch (Exception e) {
-            Log.e(TAG, "onDestroy error: " + e.getMessage());
+public void onDestroy() {
+    super.onDestroy();
+    try {
+        if (isTracking) {
+            saveCheckpoint();
+            scheduleWatchdog();
         }
-        instance = null;
+        cancelAutoStopTimer();
+        if (sensorTracker != null) sensorTracker.stopTracking();
+        stopSaveLoop();
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        if (webServer != null) webServer.stop();
+        try {
+            com.carmd.triptracking.util.VoiceFeedback.getInstance(this).shutdown();
+        } catch (Exception e) { /* ignored */ }
+    } catch (Exception e) {
+        Log.e(TAG, "onDestroy error: " + e.getMessage());
     }
+    instance = null;
+}
 
     // =========================================================================
     // Public API
