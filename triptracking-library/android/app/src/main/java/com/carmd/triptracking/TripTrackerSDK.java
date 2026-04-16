@@ -12,6 +12,8 @@ import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.*;
 import com.carmd.triptracking.util.LogcatWriter;
 import com.carmd.triptracking.util.VoiceFeedback;
+import android.util.Log;
+
 
 public final class TripTrackerSDK {
     private static final String TAG = "TripTrackerSDK";
@@ -94,6 +96,21 @@ public final class TripTrackerSDK {
         initialized = true;
         Log.i(TAG, "✅ TripTrackerSDK initialized — interval=" + config.saveIntervalMinutes
                 + "min dist=" + config.saveDistanceMeters + "m autoStop=" + config.autoStopTimeoutMinutes + "min");
+    }
+
+    /** Call this after user grants permission to start the service manually. */
+    public static void startTracking(Context context) {
+        if (!hasLocationPermission(context)) {
+            Log.e(TAG, "Cannot start — location permission still not granted");
+            return;
+        }
+        try {
+            Intent si = new Intent(context, LocationTrackingService.class);
+            context.startForegroundService(si);
+            Log.i(TAG, "✅ Tracking service started");
+        } catch (SecurityException e) {
+            Log.e(TAG, "Start failed: " + e.getMessage());
+        }
     }
 
     public static void applyConfig(Context ctx, Config config) {

@@ -60,8 +60,8 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @Override
     public void load() {
-        Intent intent = new Intent(getContext(), LocationTrackingService.class);
-        getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        // Intent intent = new Intent(getContext(), LocationTrackingService.class);
+        // getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -135,6 +135,14 @@ public class TripTrackerCapPlugin extends Plugin {
 
         JSObject ret = new JSObject();
         ret.put("initialized", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void startTracking(PluginCall call) {
+        TripTrackerSDK.startTracking(getContext());
+        JSObject ret = new JSObject();
+        ret.put("started", true);
         call.resolve(ret);
     }
 
