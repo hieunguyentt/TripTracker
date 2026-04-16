@@ -100,10 +100,6 @@ public final class TripTrackerSDK {
 
     /** Call this after user grants permission to start the service manually. */
     public static void startTracking(Context context) {
-        if (!hasLocationPermission(context)) {
-            Log.e(TAG, "Cannot start — location permission still not granted");
-            return;
-        }
         try {
             Intent si = new Intent(context, LocationTrackingService.class);
             context.startForegroundService(si);
