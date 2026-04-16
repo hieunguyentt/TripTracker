@@ -15,7 +15,7 @@
 	"triptracking-library/capacitor_plugin/ios/", 
 	"triptracking-library/capacitor_plugin/android/", 
 	"triptracking-library/capacitor_plugin/src/",
-	"CapacitorTriptracker.podspec"
+	"CapacitorTripTracker.podspec"
 	],
   "keywords": ["capacitor", "plugin", "ios", "android", "triptracker", "gps", "geofence"],
   "scripts": {
