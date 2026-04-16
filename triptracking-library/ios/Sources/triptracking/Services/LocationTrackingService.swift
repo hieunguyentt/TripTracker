@@ -1367,9 +1367,10 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
         let activityType: String
         switch lastMotionState {
-        case .still, .unknown: activityType = "still"
-        case .walking, .running: activityType = "walking"
-        case .automotive: activityType = "vehicle"
+        case .still, .unknown:         activityType = "still"
+        case .walking, .running:       activityType = "walking"
+        case .cycling:                  activityType = "cycling"
+        case .automotive:              activityType = "vehicle"
         }
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
