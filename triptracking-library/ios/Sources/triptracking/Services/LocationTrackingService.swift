@@ -666,10 +666,11 @@ class LocationTrackingService: NSObject {
 
         lastPersistedTimestampSec = nowMs / 1000
         DatabaseManager.shared.saveCachedLocation(location: pt)
-        if isTracking && currentTripId != -1 {
+         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
-            sendAPIPing(location: pt, source: source)
         }
+        // API: ping on every save (trip and no trip)
+        sendAPIPing(location: pt, source: source)
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
         print("📍 Motion-change save: \(prev.rawValue)→\(next.rawValue) src=\(source.rawValue) spd=\(String(format:"%.1f", speed))m/s")
@@ -855,8 +856,9 @@ class LocationTrackingService: NSObject {
         DatabaseManager.shared.saveCachedLocation(location: pt)
         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
-            sendAPIPing(location: pt, source: source)
         }
+        // API: ping on every save (trip and no trip)
+        sendAPIPing(location: pt, source: source)
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
         lastKnownLocation = base
@@ -1097,9 +1099,9 @@ class LocationTrackingService: NSObject {
         DatabaseManager.shared.saveCachedLocation(location: location)
         if isTracking && tripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: tripId, location: location)
-            // API: send ping on every GPS save during trip
-            sendAPIPing(location: location, source: source)
         }
+        // API: send ping on every GPS save (trip and no trip)
+        sendAPIPing(location: location, source: source)
         return true
     }
 
@@ -1384,7 +1386,6 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             isMoving: isTracking,
             speed: location.speed,
             activityType: activityType,
-            routeId: String(currentTripId)
         )
     }
 }

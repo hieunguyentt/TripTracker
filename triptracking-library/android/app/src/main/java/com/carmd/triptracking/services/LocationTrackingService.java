@@ -957,6 +957,9 @@ public void onDestroy() {
         if (isTracking && currentTripId != -1) {
             database.saveLocation(currentTripId, location, sourceStr);
             lastSaveTime = System.currentTimeMillis();
+            Log.d(TAG, "Saved: source=" + sourceStr +
+                    " speed=" + String.format("%.1f", speed) + " m/s trip=" + currentTripId);
+        }
 
             // API: send ping on every GPS save during trip
             String activityType;
@@ -977,7 +980,6 @@ public void onDestroy() {
 
             Log.d(TAG, "Saved: source=" + sourceStr +
                     " speed=" + String.format("%.1f", speed) + " m/s trip=" + currentTripId);
-        }
     }
 
     // =========================================================================
