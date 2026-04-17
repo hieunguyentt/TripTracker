@@ -959,7 +959,16 @@ public void onDestroy() {
             lastSaveTime = System.currentTimeMillis();
 
             // API: send ping on every GPS save during trip
-            String activityType = speed >= vehicleThreshold() ? "vehicle" : (speed > 0.5f ? "walking" : "still");
+            String activityType;
+            if (speed >= vehicleThreshold()) {
+                activityType = "in-vehicle";
+            } else if (speed > 1.5f) {
+                activityType = "running";
+            } else if (speed > 0.5f) {
+                activityType = "walking";
+            } else {
+                activityType = "still";
+            }
             TripTrackerAPIService.getInstance().sendPing(location, true, speed, activityType);
 
             Log.d(TAG, "Saved: source=" + sourceStr +
