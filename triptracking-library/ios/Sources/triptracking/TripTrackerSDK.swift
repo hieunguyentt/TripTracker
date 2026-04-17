@@ -16,7 +16,7 @@ public struct TripTrackerConfig {
     // Features
     public var geofenceEnabled: Bool = false
     public var webMonitorEnabled: Bool = false
-    public var voiceFeedbackEnabled: Bool = true
+    public var voiceFeedbackEnabled: Bool = false
 
     // API
     public var pingURL: String = ""
@@ -30,11 +30,11 @@ public struct TripTrackerConfig {
     public var apiAuthToken: String = ""    // NEW header: api-auth-token
 
     // Notifications
-    public var notifyTripStart: Bool = true
-    public var notifyTripEnd: Bool = true
-    public var notifyDistanceKm: Bool = true
-    public var notifyGeofenceEnter: Bool = true
-    public var notifyGeofenceExit: Bool = true
+    public var notifyTripStart: Bool = false
+    public var notifyTripEnd: Bool = false
+    public var notifyDistanceKm: Bool = false
+    public var notifyGeofenceEnter: Bool = false
+    public var notifyGeofenceExit: Bool = false
 
     public init() {}
 

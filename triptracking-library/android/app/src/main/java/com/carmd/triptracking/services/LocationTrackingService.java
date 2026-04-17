@@ -962,8 +962,10 @@ public void onDestroy() {
             String activityType;
             boolean moving = true;
             if (speed >= vehicleThreshold()) {
-                activityType = "in-vehicle";
-            } else if (speed > 1.5f) {
+                activityType = "in_vehicle";
+            } else if (speed >= 3.0f) {
+                activityType = "on_bicycle";
+            } else if (speed >= 1.5f) {
                 activityType = "running";
             } else if (speed > 0.5f) {
                 activityType = "walking";

@@ -33,14 +33,14 @@ public final class TripTrackerSDK {
         // Features
         public boolean geofenceEnabled = false;
         public boolean webMonitorEnabled = false;
-        public boolean voiceFeedbackEnabled = true;
+        public boolean voiceFeedbackEnabled = false;
 
         // Notifications
-        public boolean notifyTripStart = true;
-        public boolean notifyTripEnd = true;
-        public boolean notifyDistanceKm = true;
-        public boolean notifyGeofenceEnter = true;
-        public boolean notifyGeofenceExit = true;
+        public boolean notifyTripStart = false;
+        public boolean notifyTripEnd = false;
+        public boolean notifyDistanceKm = false;
+        public boolean notifyGeofenceEnter = false;
+        public boolean notifyGeofenceExit = false;
 
         // API
         public String pingURL = "";

@@ -1376,8 +1376,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             case .still, .unknown:    activityType = "still"
             case .walking:            activityType = "walking"
             case .running:            activityType = "running"
-            case .cycling:            activityType = "on-bicycle"
-            case .automotive:         activityType = "in-vehicle"
+            case .cycling:            activityType = "on_bicycle"
+            case .automotive:         activityType = "in_vehicle"
         }
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
