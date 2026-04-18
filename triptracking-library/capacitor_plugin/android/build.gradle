@@ -60,5 +60,5 @@ dependencies {
     implementation 'com.google.android.gms:play-services-maps:18.2.0'
     implementation 'androidx.core:core:1.12.0'
     // TripTracking library
-    implementation 'com.github.hieunguyentt:triptracking-android:1.0.22'
+    implementation 'com.github.hieunguyentt:triptracking-android:1.0.23'
 }

@@ -3,7 +3,7 @@ package = JSON.parse(File.read(File.join(__dir__, 'package.json')))
 
 Pod::Spec.new do |s|
   s.name         = 'CapacitorTripTracker'
-  s.version      = '1.0.22'
+  s.version      = '1.0.23'
   s.summary      = 'TripTracking Capacitor Plugin'
   s.license      = 'MIT'
   s.author           = { 'Hieu Nguyen' => 'hieu.nguyen@sw.innova.com' }
@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.source_files = 'ios/Plugin/**/*.{swift,h,m,c,cc,mm,cpp}'
   s.ios.deployment_target = '14.0'
   s.dependency 'Capacitor'  
-  s.dependency 'triptracking', '1.0.22'
+  s.dependency 'triptracking', '1.0.23'
   s.swift_version = '5.9'
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'

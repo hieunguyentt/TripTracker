@@ -198,6 +198,8 @@ public class LocationTrackingService extends Service implements
             Log.w(TAG, "⚠️ No location permission — waiting…");
             startPermissionPoller();
         }
+
+        restoreAPIConfigFromPrefs(this);
     }
 
     /**
@@ -1482,5 +1484,33 @@ private void startMinimalForeground() {
         }
         permissionHandler = null;
         permissionRunnable = null;
+    }
+
+    /**
+     * Restore API config from SharedPreferences.
+     * Called by LocationTrackingService.onCreate when service restarts after app kill.
+     */
+    public static void restoreAPIConfigFromPrefs(Context ctx) {
+        SharedPreferences prefs = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE);
+        String pingURL = prefs.getString("api_pingURL", "");
+        String endURL = prefs.getString("api_endURL", "");
+        String userId = prefs.getString("api_userId", "");
+        String vehicleId = prefs.getString("api_vehicleId", "");
+        String osInfo = prefs.getString("api_osInfo", "");
+        String routeId = prefs.getString("api_routeId", "");
+        String authKey = prefs.getString("api_authorizationKey", "");
+        String apiAuthKey = prefs.getString("api_apiAuthKey", "");
+        String apiAuthToken = prefs.getString("api_apiAuthToken", "");
+
+        // Use vehicleId as routeId if routeId is empty
+        String effectiveRouteId = (routeId != null && !routeId.isEmpty()) ? routeId : vehicleId;
+
+        TripTrackerAPIService.getInstance().configure(
+                pingURL, endURL, userId, vehicleId,
+                osInfo, effectiveRouteId, authKey, apiAuthKey, apiAuthToken);
+
+        boolean enabled = TripTrackerAPIService.getInstance().isEnabled();
+        Log.i(TAG, "API config restored from prefs — enabled=" + enabled
+                + " ping=" + pingURL + " user=" + userId);
     }
 }
