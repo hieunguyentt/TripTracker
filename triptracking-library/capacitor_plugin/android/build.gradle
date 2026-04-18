@@ -22,7 +22,7 @@ android {
     compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 34
 
     defaultConfig {
-        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 23
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
         targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 34
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,5 +60,5 @@ dependencies {
     implementation 'com.google.android.gms:play-services-maps:18.2.0'
     implementation 'androidx.core:core:1.12.0'
     // TripTracking library
-    implementation 'com.github.hieunguyentt:triptracking-android:1.0.23'
+    implementation 'com.github.hieunguyentt:triptracking-android:1.0.24'
 }
