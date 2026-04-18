@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        minSdk 23
+        minSdk 24
         targetSdk 34
         versionName "1.0.0"
         // ← xóa versionCode, không cần cho library
@@ -74,7 +74,7 @@ afterEvaluate {
                 from components.release  // ← không nested afterEvaluate nữa
                 groupId    = 'com.github.hieunguyentt'
                 artifactId = 'triptracking-android'
-                version    = '1.0.21'
+                version    = '1.0.22'
             }
         }
         repositories {
