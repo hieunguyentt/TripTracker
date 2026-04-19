@@ -19,4 +19,9 @@ Pod::Spec.new do |s|
                  'AVFoundation', 'UserNotifications', 'Network'
   s.libraries = 'sqlite3'
   s.weak_frameworks = 'CarPlay'
+
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    'SWIFT_INCLUDE_PATHS' => '$(inherited) $(PODS_CONFIGURATION_BUILD_DIR)/triptracking'
+  }
 end

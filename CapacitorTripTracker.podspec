@@ -17,4 +17,9 @@ Pod::Spec.new do |s|
   s.dependency 'Capacitor'
   s.dependency 'triptracking', '>= 1.0.0'
   s.swift_version = '5.9'
+
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    'SWIFT_INCLUDE_PATHS' => '$(inherited) $(PODS_CONFIGURATION_BUILD_DIR)/triptracking'
+  }
 end
