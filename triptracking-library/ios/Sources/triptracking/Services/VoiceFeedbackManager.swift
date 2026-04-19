@@ -27,7 +27,7 @@ public class VoiceFeedbackManager {
     private var lastAnnouncedKm: Int = 0
 
     /// Master toggle. Default: ON for first install.
-    var isEnabled: Bool {
+    public var isEnabled: Bool {
         get {
             if UserDefaults.standard.object(forKey: enabledKey) == nil { return true }
             return UserDefaults.standard.bool(forKey: enabledKey)
@@ -58,7 +58,7 @@ public class VoiceFeedbackManager {
     // MARK: - Core speak
 
     /// Speak a message. Interrupts any current speech.
-    func speak(_ message: String) {
+    public func speak(_ message: String) {
         guard isEnabled else { return }
 
         // Stop current speech if any
@@ -80,11 +80,11 @@ public class VoiceFeedbackManager {
 
     // MARK: - Trip Events
 
-    func announceTripStarted(tripId: Int64) {
+    public func announceTripStarted(tripId: Int64) {
         speak("Trip started.")
     }
 
-    func announceTripEnded(tripId: Int64, distance: Double, duration: Int64) {
+    public func announceTripEnded(tripId: Int64, distance: Double, duration: Int64) {
         let distText = formatDistance(distance)
         let durText = formatDuration(duration)
         speak("Trip ended. \(distText) in \(durText).")
@@ -92,7 +92,7 @@ public class VoiceFeedbackManager {
 
     /// Call on every location update to check distance milestones.
     /// Triggers voice + push notification + CarPlay alert when a new km is reached.
-    func checkDistanceMilestone(totalDistance: Double) {
+    public func checkDistanceMilestone(totalDistance: Double) {
         let km = Int(totalDistance / 1000)
         guard km > 0 && km > lastAnnouncedKm else { return }
         lastAnnouncedKm = km
@@ -116,27 +116,27 @@ public class VoiceFeedbackManager {
     }
 
     /// Reset milestone counter (call on trip start).
-    func resetMilestones() {
+    public func resetMilestones() {
         lastAnnouncedKm = 0
     }
 
     // MARK: - Geofence Events
 
-    func announceGeofenceEntered(zoneName: String) {
+    public func announceGeofenceEntered(zoneName: String) {
         speak("Entered \(zoneName).")
     }
 
-    func announceGeofenceExited(zoneName: String) {
+    public func announceGeofenceExited(zoneName: String) {
         speak("Left \(zoneName).")
     }
 
     // MARK: - Speed Events
 
-    func announceVehicleSpeedDetected() {
+    public func announceVehicleSpeedDetected() {
         speak("Vehicle speed detected. Trip recording.")
     }
 
-    func announceVehicleStopped() {
+    public func announceVehicleStopped() {
         speak("Vehicle stopped. Auto stop countdown started.")
     }
 

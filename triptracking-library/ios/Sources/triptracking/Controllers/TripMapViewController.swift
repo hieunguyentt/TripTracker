@@ -10,8 +10,8 @@ import MapKit
 
 public class TripMapViewController: UIViewController {
     
-    var tripLocations: [LocationPoint] = []
-    var tripInfo: Trip?
+    public var tripLocations: [LocationPoint] = []
+    public var tripInfo: Trip?
     
     private let mapView: MKMapView = {
         let map = MKMapView()
@@ -35,7 +35,7 @@ public class TripMapViewController: UIViewController {
     private let pointsLabel = UILabel()
     private let dateLabel = UILabel()
     
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         
@@ -298,7 +298,7 @@ public class TripMapViewController: UIViewController {
 
 extension TripMapViewController: MKMapViewDelegate {
     
-    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+    public func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         // All trip history overlays are GPSPolyline (road-snapped, blue).
         if let poly = overlay as? GPSPolyline {
             let r = MKPolylineRenderer(polyline: poly)
@@ -318,7 +318,7 @@ extension TripMapViewController: MKMapViewDelegate {
         return MKOverlayRenderer(overlay: overlay)
     }
     
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+    public func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         guard annotation is MKPointAnnotation else { return nil }
         
         let identifier = "TripMarker"
@@ -347,7 +347,7 @@ extension TripMapViewController: MKMapViewDelegate {
 // MARK: - Helper: convert MKMapPoint pointer to coordinate array
 
 private extension UnsafeMutablePointer where Pointee == MKMapPoint {
-    func toArray(count: Int) -> [CLLocationCoordinate2D] {
+    public func toArray(count: Int) -> [CLLocationCoordinate2D] {
         (0..<count).map { self[$0].coordinate }
     }
 }

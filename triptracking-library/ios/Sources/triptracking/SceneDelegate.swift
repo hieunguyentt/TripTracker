@@ -7,9 +7,9 @@ import UIKit
 
 public class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
-    var window: UIWindow?
+    public var window: UIWindow?
 
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+    public func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
         window = UIWindow(windowScene: windowScene)
@@ -22,7 +22,7 @@ public class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
     }
 
-    func sceneDidEnterBackground(_ scene: UIScene) {
+    public func sceneDidEnterBackground(_ scene: UIScene) {
         // Save data when entering background
         DatabaseManager.shared.saveContext()
     }

@@ -21,8 +21,8 @@ import CarPlay
 
 public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
-    var interfaceController: CPInterfaceController?
-    var carWindow: CPWindow?
+    public var interfaceController: CPInterfaceController?
+    public var carWindow: CPWindow?
 
     private var mapManager: CarPlayMapManager?
     private var drivingTaskManager: CarPlayDrivingTaskManager?
@@ -38,7 +38,7 @@ public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelega
     // This is the method iOS calls when the entitlement is carplay-driving-task.
     // It does NOT provide a CPWindow — only templates are allowed.
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+    public func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
                                    didConnect interfaceController: CPInterfaceController) {
         print("🚗 CarPlay connected (Driving Task — no window)")
         self.interfaceController = interfaceController
@@ -52,7 +52,7 @@ public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelega
         drivingTaskManager?.start()
     }
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+    public func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
                                    didDisconnect interfaceController: CPInterfaceController) {
         print("🚗 CarPlay disconnected (Driving Task)")
         cleanup()
@@ -63,7 +63,7 @@ public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelega
     // This is the method iOS calls when the entitlement is carplay-maps.
     // It provides a CPWindow for rendering MKMapView.
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+    public func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
                                    didConnect interfaceController: CPInterfaceController,
                                    to window: CPWindow) {
         print("🚗 CarPlay connected (Map — with window)")
@@ -81,7 +81,7 @@ public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelega
         }
     }
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+    public func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
                                    didDisconnect interfaceController: CPInterfaceController,
                                    from window: CPWindow) {
         print("🚗 CarPlay disconnected (Map)")

@@ -7,18 +7,18 @@ import Foundation
 import CoreLocation
 
 public struct LocationPoint {
-    let id: Int64
-    let tripId: Int64?
-    let latitude: Double
-    let longitude: Double
-    let altitude: Double
-    let accuracy: Float
-    let speed: Float
-    let bearing: Float
-    let timestamp: Int64
-    let source: String
+    public let id: Int64
+    public let tripId: Int64?
+    public let latitude: Double
+    public let longitude: Double
+    public let altitude: Double
+    public let accuracy: Float
+    public let speed: Float
+    public let bearing: Float
+    public let timestamp: Int64
+    public let source: String
     
-    init(id: Int64 = 0,
+    public init(id: Int64 = 0,
          tripId: Int64? = nil,
          latitude: Double,
          longitude: Double,
@@ -40,7 +40,7 @@ public struct LocationPoint {
         self.source = source
     }
     
-    init(from clLocation: CLLocation, source: TrackingSource) {
+    public init(from clLocation: CLLocation, source: TrackingSource) {
         self.id = 0
         self.tripId = nil
         self.latitude = clLocation.coordinate.latitude
@@ -53,7 +53,7 @@ public struct LocationPoint {
         self.source = source.rawValue
     }
     
-    func toCLLocation() -> CLLocation {
+    public func toCLLocation() -> CLLocation {
         let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         return CLLocation(coordinate: coordinate,
                          altitude: altitude,
@@ -64,7 +64,7 @@ public struct LocationPoint {
                          timestamp: Date(timeIntervalSince1970: Double(timestamp) / 1000.0))
     }
     
-    var formattedTime: String {
+    public var formattedTime: String {
         let date = Date(timeIntervalSince1970: Double(timestamp) / 1000.0)
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"

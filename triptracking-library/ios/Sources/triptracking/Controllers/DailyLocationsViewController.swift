@@ -18,7 +18,7 @@ public class DailyLocationsViewController: UIViewController {
     
     private var dates: [(date: String, count: Int)] = []
     
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         
@@ -46,7 +46,7 @@ public class DailyLocationsViewController: UIViewController {
         navigationController?.navigationBar.tintColor = .white
     }
     
-    override func viewWillAppear(_ animated: Bool) {
+    public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadDates() // Reload when coming back
     }
@@ -95,18 +95,18 @@ public class DailyLocationsViewController: UIViewController {
 
 extension DailyLocationsViewController: UITableViewDelegate, UITableViewDataSource {
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return dates.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "DateCell", for: indexPath) as! DateCell
         let date = dates[indexPath.row]
         cell.configure(date: date.date, count: date.count)
         return cell
     }
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let dateInfo = dates[indexPath.row]
         showDayRouteOnMap(date: dateInfo.date, count: dateInfo.count)
@@ -155,7 +155,7 @@ public class DateCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func configure(date: String, count: Int) {
+    public func configure(date: String, count: Int) {
         // Format date nicely
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -174,12 +174,12 @@ public class DateCell: UITableViewCell {
 
 // Custom annotation carrying a full LocationPoint
 public class LocationAnnotation: NSObject, MKAnnotation {
-    let locationPoint: LocationPoint
-    var coordinate: CLLocationCoordinate2D
-    var title: String?
-    var subtitle: String?
+    public let locationPoint: LocationPoint
+    public var coordinate: CLLocationCoordinate2D
+    public var title: String?
+    public var subtitle: String?
 
-    init(point: LocationPoint, index: Int, total: Int) {
+    public init(point: LocationPoint, index: Int, total: Int) {
         self.locationPoint = point
         self.coordinate = CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
         self.title = point.formattedTime
@@ -192,9 +192,9 @@ public class LocationAnnotation: NSObject, MKAnnotation {
 
 public class DailyRouteMapViewController: UIViewController {
 
-    var dayLocations: [LocationPoint] = []
-    var dateString: String = ""
-    var totalPoints: Int = 0
+    public var dayLocations: [LocationPoint] = []
+    public var dateString: String = ""
+    public var totalPoints: Int = 0
 
     private let mapView: MKMapView = {
         let map = MKMapView()
@@ -217,7 +217,7 @@ public class DailyRouteMapViewController: UIViewController {
     private let pointsLabel  = UILabel()
     private let timeRangeLabel = UILabel()
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         title = "Daily Locations"
@@ -238,12 +238,12 @@ public class DailyRouteMapViewController: UIViewController {
         setupUI()
     }
 
-    override func viewDidAppear(_ animated: Bool) {
+    public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         displayRoute()
     }
 
-    override func viewDidDisappear(_ animated: Bool) {
+    public override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         mapView.removeOverlays(mapView.overlays)
         let nonUserAnnotations = mapView.annotations.filter { !($0 is MKUserLocation) }
@@ -472,7 +472,7 @@ public class DailyRouteMapViewController: UIViewController {
 
 extension DailyRouteMapViewController: MKMapViewDelegate {
 
-    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+    public func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let poly = overlay as? MKPolyline {
             let r = MKPolylineRenderer(polyline: poly)
             r.strokeColor = UIColor.systemBlue
@@ -484,7 +484,7 @@ extension DailyRouteMapViewController: MKMapViewDelegate {
         return MKOverlayRenderer(overlay: overlay)
     }
 
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+    public func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         guard let locAnnotation = annotation as? LocationAnnotation else { return nil }
 
         let id = "POIPin"

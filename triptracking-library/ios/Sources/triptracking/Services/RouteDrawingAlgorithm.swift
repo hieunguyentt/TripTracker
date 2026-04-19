@@ -24,18 +24,18 @@ import MapKit
 // MARK: - Result types
 
 public struct RoutePoint {
-    let coordinate: CLLocationCoordinate2D
-    let source: TrackingSource
-    let timestamp: Int64
-    let speed: Float
-    let accuracy: Float
+    public let coordinate: CLLocationCoordinate2D
+    public let source: TrackingSource
+    public let timestamp: Int64
+    public let speed: Float
+    public let accuracy: Float
 }
 
 public struct RouteSegment {
-    let polyline: MKPolyline
-    let source: TrackingSource
+    public let polyline: MKPolyline
+    public let source: TrackingSource
 
-    var color: UIColor {
+    public var color: UIColor {
         switch source {
         case .gps:     return UIColor.systemBlue
         case .sensors: return UIColor.systemGreen

@@ -67,7 +67,7 @@ public class SettingsViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         title = "Settings"
@@ -94,7 +94,7 @@ public class SettingsViewController: UIViewController {
         setupScrollView()
     }
 
-    override func viewWillAppear(_ animated: Bool) {
+    public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         // Build UI rows only once, after the navigation push animation starts
         // This makes the page appear instantly instead of blocking on UI construction
@@ -119,7 +119,7 @@ public class SettingsViewController: UIViewController {
         label.text = "Push: \(enabledCount)/5 enabled · Voice: \(voiceStatus)\nConfigure push notifications and voice announcements for trip events."
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
+    public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         // If user leaves Settings with pending slider changes, save immediately
         if autoSaveTimer != nil {
@@ -811,16 +811,16 @@ public class SettingRow: UIView {
     private let fmt:     String
 
     /// Called when the slider value changes (for auto-save debouncing).
-    var onValueChanged: (() -> Void)?
+    public var onValueChanged: (() -> Void)?
 
-    var currentValue: Double {
+    public var currentValue: Double {
         // Snap slider to nearest step
         let raw = Double(slider.value)
         let snapped = (raw / step).rounded() * step
         return min(maxVal, max(minVal, snapped))
     }
 
-    init(title: String, subtitle: String, unit: String,
+    public init(title: String, subtitle: String, unit: String,
          min: Double, max: Double, step: Double, format: String) {
         self.minVal = min
         self.maxVal = max
@@ -834,7 +834,7 @@ public class SettingRow: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func setValue(_ value: Double) {
+    public func setValue(_ value: Double) {
         let clamped = Swift.min(maxVal, Swift.max(minVal, value))
         slider.value = Float(clamped)
         updateLabel(value: clamped)

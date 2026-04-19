@@ -12,7 +12,7 @@ public enum TrackingSource: String {
     case sensors = "Sensors"
     case gps     = "GPS"
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .sensors: return "📱 Sensors"
         case .gps:     return "🛰️ GPS"
@@ -25,7 +25,7 @@ public enum MovementState {
     case slow
     case fast
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .stationary: return "⏸️ Standing Still"
         case .slow:       return "🚶 Walking"

@@ -84,7 +84,7 @@ public class LogManager: NSObject {
 
     /// Start capturing all stdout output to today's log file.
     /// Call once in AppDelegate didFinishLaunching.
-    func start() {
+    public func start() {
         openTodayLogFile()
         redirectStdout()
         scheduleDailyAutoSend()
@@ -101,7 +101,7 @@ public class LogManager: NSObject {
     }
 
     /// Explicitly log a message (also goes to stdout → file).
-    func log(_ message: String) {
+    public func log(_ message: String) {
         print("📝 \(message)")
     }
 
@@ -213,7 +213,7 @@ public class LogManager: NSObject {
     }
 
     /// Get all log file URLs sorted newest first.
-    func getAllLogFiles() -> [URL] {
+    public func getAllLogFiles() -> [URL] {
         guard let dir = logsDirectory else { return [] }
         let files = (try? FileManager.default.contentsOfDirectory(
             at: dir,
@@ -226,7 +226,7 @@ public class LogManager: NSObject {
     }
 
     /// Get today's log file URL.
-    func getTodayLogFile() -> URL? {
+    public func getTodayLogFile() -> URL? {
         guard let dir = logsDirectory else { return nil }
         let todayStr = dateFormatter.string(from: Date())
         let url = dir.appendingPathComponent("\(todayStr).log")
@@ -234,7 +234,7 @@ public class LogManager: NSObject {
     }
 
     /// Get total size of all log files (for display in Settings).
-    func totalLogSize() -> String {
+    public func totalLogSize() -> String {
         let files = getAllLogFiles()
         var total: UInt64 = 0
         for file in files {

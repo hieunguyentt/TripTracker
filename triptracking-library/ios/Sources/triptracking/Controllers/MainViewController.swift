@@ -156,7 +156,7 @@ public class MainViewController: UIViewController {
     
     // MARK: - Lifecycle
     
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         
@@ -292,7 +292,7 @@ public class MainViewController: UIViewController {
         }
     }
     
-    override func viewDidAppear(_ animated: Bool) {
+    public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         // Refresh map day/night based on current time
@@ -1095,7 +1095,7 @@ public class MainViewController: UIViewController {
 
 extension MainViewController: LocationUpdateDelegate {
     
-    func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double) {
+    public func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
@@ -1211,7 +1211,7 @@ extension MainViewController: LocationUpdateDelegate {
         }
     }
     
-    func didUpdateStats(speed: Float, distance: Double, duration: Int64) {
+    public func didUpdateStats(speed: Float, distance: Double, duration: Int64) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
@@ -1236,7 +1236,7 @@ extension MainViewController: LocationUpdateDelegate {
         }
     }
     
-    func didChangeTrackingState(isTracking: Bool) {
+    public func didChangeTrackingState(isTracking: Bool) {
         DispatchQueue.main.async { [weak self] in
             self?.updateButtonStates(isTracking: isTracking)
         }
@@ -1248,7 +1248,7 @@ extension MainViewController: LocationUpdateDelegate {
 extension MainViewController: MKMapViewDelegate {
 
     // MARK: Orange pin styling for fake destination
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+    public func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         guard let point = annotation as? MKPointAnnotation,
               point === fakePin else { return nil }
 
@@ -1263,7 +1263,7 @@ extension MainViewController: MKMapViewDelegate {
         return view
     }
     
-    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+    public func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         // RouteDrawingAlgorithm renders:
         //   GPSPolyline    → blue  (vehicle speed ≥ 6 m/s)
         //   SensorPolyline → green (slow / walking speed)
@@ -1286,7 +1286,7 @@ extension MainViewController: MKMapViewDelegate {
 
 extension MainViewController: AutoTripDelegate {
 
-    func autoTripDidStart(tripId: Int64) {
+    public func autoTripDidStart(tripId: Int64) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
@@ -1303,7 +1303,7 @@ extension MainViewController: AutoTripDelegate {
         }
     }
 
-    func autoTripDidEnd(tripId: Int64, reason: String) {
+    public func autoTripDidEnd(tripId: Int64, reason: String) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
@@ -1347,7 +1347,7 @@ public class StatLabel: UIView {
         return label
     }()
     
-    init(title: String, value: String) {
+    public init(title: String, value: String) {
         super.init(frame: .zero)
         
         titleLabel.text = title
@@ -1372,7 +1372,7 @@ public class StatLabel: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func setValue(_ value: String) {
+    public func setValue(_ value: String) {
         valueLabel.text = value
     }
 }

@@ -29,7 +29,7 @@ public class CarPlayMapManager: NSObject {
     private var lastTripState: Bool = false
     private var lastAnnouncedTripId: Int64 = -1
 
-    init(interfaceController: CPInterfaceController, window: CPWindow) {
+    public init(interfaceController: CPInterfaceController, window: CPWindow) {
         self.interfaceController = interfaceController
         self.window = window
         super.init()
@@ -37,7 +37,7 @@ public class CarPlayMapManager: NSObject {
 
     // MARK: - Lifecycle
 
-    func start() {
+    public func start() {
         // Create map view controller
         let mapVC = CarPlayMapViewController()
         mapViewController = mapVC
@@ -100,7 +100,7 @@ public class CarPlayMapManager: NSObject {
         print("🚗 CarPlay map template loaded")
     }
 
-    func stop() {
+    public func stop() {
         updateTimer?.invalidate()
         updateTimer = nil
         NotificationCenter.default.removeObserver(self)
@@ -284,15 +284,15 @@ public class CarPlayMapManager: NSObject {
 
 extension CarPlayMapManager: CPMapTemplateDelegate {
 
-    func mapTemplate(_ mapTemplate: CPMapTemplate, panBeganWith direction: CPMapTemplate.PanDirection) {
+    public func mapTemplate(_ mapTemplate: CPMapTemplate, panBeganWith direction: CPMapTemplate.PanDirection) {
         // User is panning the map
     }
 
-    func mapTemplate(_ mapTemplate: CPMapTemplate, panEndedWith direction: CPMapTemplate.PanDirection) {
+    public func mapTemplate(_ mapTemplate: CPMapTemplate, panEndedWith direction: CPMapTemplate.PanDirection) {
         // User stopped panning
     }
 
-    func mapTemplate(_ mapTemplate: CPMapTemplate, panWith direction: CPMapTemplate.PanDirection) {
+    public func mapTemplate(_ mapTemplate: CPMapTemplate, panWith direction: CPMapTemplate.PanDirection) {
         mapViewController?.pan(direction: direction)
     }
 }

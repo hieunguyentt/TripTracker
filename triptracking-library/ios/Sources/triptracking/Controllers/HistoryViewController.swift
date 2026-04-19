@@ -17,7 +17,7 @@ public class HistoryViewController: UIViewController {
     
     private var trips: [Trip] = []
     
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         
@@ -45,7 +45,7 @@ public class HistoryViewController: UIViewController {
         navigationController?.navigationBar.tintColor = .white
     }
     
-    override func viewWillAppear(_ animated: Bool) {
+    public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadTrips() // Reload when coming back
     }
@@ -103,21 +103,21 @@ public class HistoryViewController: UIViewController {
 
 extension HistoryViewController: UITableViewDelegate, UITableViewDataSource {
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return trips.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TripCell", for: indexPath) as! TripCell
         cell.configure(with: trips[indexPath.row])
         return cell
     }
     
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+    public func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 80
     }
     
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let trip = trips[indexPath.row]
         showTripOnMap(trip: trip)
@@ -174,7 +174,7 @@ public class TripCell: UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func configure(with trip: Trip) {
+    public func configure(with trip: Trip) {
         dateLabel.text = trip.formattedStartTime
         distanceLabel.text = "📏 \(trip.formattedDistance)"
         durationLabel.text = "⏱️ \(trip.formattedDuration)"

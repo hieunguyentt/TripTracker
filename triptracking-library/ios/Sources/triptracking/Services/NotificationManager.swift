@@ -26,7 +26,7 @@ public class NotificationManager: NSObject {
     // MARK: - Permission
 
     /// Request notification permission. Call once at app launch.
-    func requestPermission() {
+    public func requestPermission() {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
@@ -43,7 +43,7 @@ public class NotificationManager: NSObject {
     // MARK: - Trip Notifications
 
     /// Notify when a trip auto-starts.
-    func notifyTripStarted(tripId: Int64) {
+    public func notifyTripStarted(tripId: Int64) {
         guard NotificationSettingsViewController.isTripStartEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "🚗 Trip Started"
@@ -67,7 +67,7 @@ public class NotificationManager: NSObject {
     }
 
     /// Notify when a trip auto-ends.
-    func notifyTripEnded(tripId: Int64, reason: String, distance: Double, duration: Int64) {
+    public func notifyTripEnded(tripId: Int64, reason: String, distance: Double, duration: Int64) {
         guard NotificationSettingsViewController.isTripEndEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "🏁 Trip Ended"
@@ -99,7 +99,7 @@ public class NotificationManager: NSObject {
     }
 
     /// Notify when a distance milestone is reached (every 1 km).
-    func notifyDistanceMilestone(km: Int, totalDistance: Double) {
+    public func notifyDistanceMilestone(km: Int, totalDistance: Double) {
         guard NotificationSettingsViewController.isDistanceKmEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "📏 \(km) km Traveled"
@@ -130,7 +130,7 @@ public class NotificationManager: NSObject {
 
     /// Schedule a repeating daily notification at 6:00 AM to check yesterday's route.
     /// Safe to call multiple times — removes the old one before rescheduling.
-    func scheduleDailyReminder() {
+    public func scheduleDailyReminder() {
         let center = UNUserNotificationCenter.current()
 
         // Remove any existing daily reminder to avoid duplicates
@@ -170,14 +170,14 @@ public class NotificationManager: NSObject {
 extension NotificationManager: UNUserNotificationCenterDelegate {
 
     /// Show notification even when app is in foreground.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
+    public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound])
     }
 
     /// Handle tap on notification.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
+    public func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let id = response.notification.request.identifier

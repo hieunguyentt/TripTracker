@@ -55,7 +55,7 @@ public class GeofenceManager {
     private let maxJumpM: Double = 5000.0
 
     /// Master toggle — when off, all monitoring is paused.
-    var isEnabled: Bool {
+    public var isEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: enabledKey) }
         set {
             UserDefaults.standard.set(newValue, forKey: enabledKey)
@@ -100,7 +100,7 @@ public class GeofenceManager {
 
     // MARK: - Zone CRUD
 
-    func addZone(_ zone: GeofenceZone) {
+    public func addZone(_ zone: GeofenceZone) {
         guard zones.count < 20 else {
             print("🔶 Cannot add zone — max 20 reached")
             return
@@ -111,7 +111,7 @@ public class GeofenceManager {
         print("🔶 Added zone: \(zone.name) (\(zone.latitude), \(zone.longitude)) r=\(Int(zone.radius))m")
     }
 
-    func removeZone(at index: Int) {
+    public func removeZone(at index: Int) {
         guard index < zones.count else { return }
         let zone = zones[index]
         stopMonitoring(zone)
@@ -122,7 +122,7 @@ public class GeofenceManager {
         print("🔶 Removed zone: \(zone.name)")
     }
 
-    func removeZone(id: String) {
+    public func removeZone(id: String) {
         if let idx = zones.firstIndex(where: { $0.id == id }) {
             removeZone(at: idx)
         }
@@ -130,13 +130,13 @@ public class GeofenceManager {
 
     // MARK: - Native iOS Region Monitoring (backup for terminated state)
 
-    func startMonitoringAll() {
+    public func startMonitoringAll() {
         guard isEnabled else { return }
         for zone in zones { startMonitoring(zone) }
         print("🔶 Monitoring \(zones.count) geofence zone(s)")
     }
 
-    func stopMonitoringAll() {
+    public func stopMonitoringAll() {
         let lm = LocationTrackingService.shared.regionLocationManager
         for region in lm.monitoredRegions {
             if zones.contains(where: { $0.id == region.identifier }) {
@@ -172,7 +172,7 @@ public class GeofenceManager {
     //   2. Exit debounce — require 3 consecutive "outside" readings before firing exit
     //   3. Cooldown — minimum 30 seconds between enter/exit events for the same zone
 
-    func checkLocation(_ location: CLLocation) {
+    public func checkLocation(_ location: CLLocation) {
         guard isEnabled, !zones.isEmpty else { return }
 
         // ── Protection 1: GPS quality filter ──
@@ -254,7 +254,7 @@ public class GeofenceManager {
 
     // MARK: - Native Region Event Handlers (backup — forwarded by LocationTrackingService)
 
-    func handleDidEnterRegion(_ region: CLRegion) {
+    public func handleDidEnterRegion(_ region: CLRegion) {
         guard let zone = zones.first(where: { $0.id == region.identifier }) else { return }
         // Only fire if manual check hasn't already handled it
         guard !insideZoneIDs.contains(zone.id) else {
@@ -267,7 +267,7 @@ public class GeofenceManager {
         handleEnter(zone: zone)
     }
 
-    func handleDidExitRegion(_ region: CLRegion) {
+    public func handleDidExitRegion(_ region: CLRegion) {
         guard let zone = zones.first(where: { $0.id == region.identifier }) else { return }
         // Only fire if manual check hasn't already handled it
         guard insideZoneIDs.contains(zone.id) else {
@@ -280,7 +280,7 @@ public class GeofenceManager {
         handleExit(zone: zone)
     }
 
-    func handleMonitoringFailed(for region: CLRegion?, error: Error) {
+    public func handleMonitoringFailed(for region: CLRegion?, error: Error) {
         print("🔶 Monitoring failed for \(region?.identifier ?? "?") — \(error.localizedDescription)")
     }
 

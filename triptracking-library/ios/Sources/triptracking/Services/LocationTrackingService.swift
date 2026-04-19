@@ -37,15 +37,15 @@ import UIKit
 
 protocol AutoTripDelegate: AnyObject {
     /// Called when auto-trip starts a new trip.
-    func autoTripDidStart(tripId: Int64)
+    public func autoTripDidStart(tripId: Int64)
     /// Called when auto-trip ends a trip after prolonged stillness.
-    func autoTripDidEnd(tripId: Int64, reason: String)
+    public func autoTripDidEnd(tripId: Int64, reason: String)
 }
 
 protocol LocationUpdateDelegate: AnyObject {
-    func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
-    func didUpdateStats(speed: Float, distance: Double, duration: Int64)
-    func didChangeTrackingState(isTracking: Bool)
+    public func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
+    public func didUpdateStats(speed: Float, distance: Double, duration: Int64)
+    public func didChangeTrackingState(isTracking: Bool)
 }
 
 public class LocationTrackingService: NSObject {
@@ -60,7 +60,7 @@ public class LocationTrackingService: NSObject {
     
     /// Exposed for GeofenceManager to register region monitoring on this
     /// CLLocationManager — the one with "Always" auth + background modes.
-    var regionLocationManager: CLLocationManager { locationManager }
+    public var regionLocationManager: CLLocationManager { locationManager }
     private let motionManager   = CMMotionManager()
     private let pedometer       = CMPedometer()
     private let activityManager = CMMotionActivityManager()
@@ -76,18 +76,18 @@ public class LocationTrackingService: NSObject {
     // MARK: - Location state
     private var lastGPSLocation:      CLLocation?   // latest raw GPS fix
     private var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
-    var lastKnownLocation:    CLLocation?   // best position available — exposed so UI can read it without creating a new CLLocationManager
+    public var lastKnownLocation:    CLLocation?   // best position available — exposed so UI can read it without creating a new CLLocationManager
     private var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
     private(set) var currentSource: TrackingSource = .sensors
 
     /// Convenience accessor for the fake-route injector in MainViewController.
-    var lastKnownCoordinate: CLLocationCoordinate2D? { lastKnownLocation?.coordinate }
+    public var lastKnownCoordinate: CLLocationCoordinate2D? { lastKnownLocation?.coordinate }
     /// Expose running distance total for fake-route UI feedback.
-    var currentTotalDistance: Double { totalDistance }
+    public var currentTotalDistance: Double { totalDistance }
 
     /// When true, real GPS fixes are ignored — only fake injected locations are processed.
     /// Set by MainViewController when a fake route simulation is running.
-    var isFakeRouteActive: Bool = false
+    public var isFakeRouteActive: Bool = false
 
     /// Internal flag: true during injectFakeGPS() so didUpdateLocations knows it's fake.
     private var isProcessingFakeGPS: Bool = false
@@ -96,7 +96,7 @@ public class LocationTrackingService: NSObject {
     private var sensorHeadingDeg:      Double = 0.0
     private var currentAccelMagnitude: Double = 0.0
     /// Public read-only access for UI display
-    var currentAccelerationMagnitude: Double { currentAccelMagnitude }
+    public var currentAccelerationMagnitude: Double { currentAccelMagnitude }
     private var isMovingByActivity:    Bool   = false
     /// true when CMMotionActivity reports walking / running / cycling (not still, not automotive)
     private var isSlowMoving:          Bool   = false
@@ -288,7 +288,7 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Public API
 
-    func startBackgroundTracking() {
+    public func startBackgroundTracking() {
         // Start GPS briefly for an initial location fix
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
@@ -311,7 +311,7 @@ public class LocationTrackingService: NSObject {
         }
     }
 
-    func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
+    public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
         print("🎯 Starting trip")
         isTracking           = true
         tripStartTime        = Date()
@@ -344,7 +344,7 @@ public class LocationTrackingService: NSObject {
         print("✅ Trip started: ID=\(currentTripId)")
     }
 
-    func stopTrip() {
+    public func stopTrip() {
         guard isTracking else { return }
         print("🏁 Stopping trip")
 
@@ -379,7 +379,7 @@ public class LocationTrackingService: NSObject {
     /// Called on app relaunch when an active trip is found in the DB.
     /// Restores tracking state without creating a new trip — continues saving
     /// to the same trip until the user taps Stop Tracking.
-    func resumeTrip(id: Int64, startTimeMs: Int64) {
+    public func resumeTrip(id: Int64, startTimeMs: Int64) {
         guard !isTracking else { return }
         print("♻️ Resuming interrupted trip: ID=\(id)")
 
@@ -415,7 +415,7 @@ public class LocationTrackingService: NSObject {
         }
     }
 
-    func ensureBackgroundTracking() {
+    public func ensureBackgroundTracking() {
         if !isTracking { startBackgroundTracking() }
     }
 
@@ -431,7 +431,7 @@ public class LocationTrackingService: NSObject {
     /// because no location was saved for longer than autoEndStillnessSecs.
     /// Returns true if the trip was auto-ended.
     @discardableResult
-    func checkAndAutoEndStaleTrip() -> Bool {
+    public func checkAndAutoEndStaleTrip() -> Bool {
         guard let info = DatabaseManager.shared.getActiveTripInfo() else { return false }
 
         let lastTs = DatabaseManager.shared.getLastLocationTimestamp(tripId: info.id)
@@ -482,7 +482,7 @@ public class LocationTrackingService: NSObject {
 
     /// Called when app is relaunched by a significant location change.
     /// If speed >= vehicleThreshold and no active trip, auto-start one.
-    func handleSignificantLocationRelaunch() {
+    public func handleSignificantLocationRelaunch() {
         guard let location = locationManager.location else { return }
         let speed = Float(max(0, location.speed))
 
@@ -499,7 +499,7 @@ public class LocationTrackingService: NSObject {
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
     }
 
-    func getCurrentStats() -> (speed: Float, distance: Double, duration: Int64, steps: Int) {
+    public func getCurrentStats() -> (speed: Float, distance: Double, duration: Int64, steps: Int) {
         let dur = tripStartTime != nil ? Int64(Date().timeIntervalSince(tripStartTime!)) : 0
         return (effectiveSpeed(), totalDistance, dur, stepCount)
     }
@@ -1131,7 +1131,7 @@ extension LocationTrackingService {
     ///   - speed: Must be > vehicleThreshold (6 m/s) to reliably trigger GPS mode.
     ///            Use 10.0 m/s (36 km/h) for city driving simulation.
     ///   - course: Optional compass bearing (0–360°). Computed from prev→current if omitted.
-    func injectFakeGPS(coordinate: CLLocationCoordinate2D, speed: Double, course: Double = -1) {
+    public func injectFakeGPS(coordinate: CLLocationCoordinate2D, speed: Double, course: Double = -1) {
         // Compute course from previous location if not provided
         let bearing: Double
         if course >= 0 {
@@ -1174,7 +1174,7 @@ extension LocationTrackingService {
 
 extension LocationTrackingService: CLLocationManagerDelegate {
 
-    func locationManager(_ manager: CLLocationManager,
+    public func locationManager(_ manager: CLLocationManager,
                          didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
 
@@ -1301,39 +1301,39 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
     // MARK: - Region Monitoring (forwarded to GeofenceManager)
 
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+    public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         print("📍 didEnterRegion: \(region.identifier)")
         GeofenceManager.shared.handleDidEnterRegion(region)
     }
 
-    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
+    public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         print("📍 didExitRegion: \(region.identifier)")
         GeofenceManager.shared.handleDidExitRegion(region)
     }
 
-    func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?,
+    public func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?,
                          withError error: Error) {
         GeofenceManager.shared.handleMonitoringFailed(for: region, error: error)
     }
 
-    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
+    public func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
         print("📍 Started monitoring region: \(region.identifier)")
         // Request the current state so we know if we're already inside
         manager.requestState(for: region)
     }
 
-    func locationManager(_ manager: CLLocationManager, didDetermineState state: CLRegionState,
+    public func locationManager(_ manager: CLLocationManager, didDetermineState state: CLRegionState,
                          for region: CLRegion) {
         let stateStr = state == .inside ? "INSIDE" : state == .outside ? "OUTSIDE" : "UNKNOWN"
         print("📍 Region state: \(region.identifier) → \(stateStr)")
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("❌ Location error: \(error.localizedDescription)")
         // GPS failed — sensor dead reckoning continues automatically; no action needed
     }
 
-    func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
+    public func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
         // CLVisit fires when iOS detects the user arrived at or departed a location.
         // This relaunches the app from terminated state — opportunity to check auto-end/start.
         let isDeparture = visit.departureDate != .distantFuture
@@ -1354,7 +1354,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         }
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
             print("✅ Location permission granted")

@@ -26,14 +26,14 @@ public class CarPlayDrivingTaskManager: NSObject {
     private var geofenceListTemplate: CPListTemplate?
     private var updateTimer: Timer?
 
-    init(interfaceController: CPInterfaceController) {
+    public init(interfaceController: CPInterfaceController) {
         self.interfaceController = interfaceController
         super.init()
     }
 
     // MARK: - Lifecycle
 
-    func start() {
+    public func start() {
         // Tab 1: Trip Dashboard
         dashboardTemplate = buildDashboardTemplate()
 
@@ -67,7 +67,7 @@ public class CarPlayDrivingTaskManager: NSObject {
         print("🚗 CarPlay Driving Task UI loaded")
     }
 
-    func stop() {
+    public func stop() {
         updateTimer?.invalidate()
         updateTimer = nil
         NotificationCenter.default.removeObserver(self)

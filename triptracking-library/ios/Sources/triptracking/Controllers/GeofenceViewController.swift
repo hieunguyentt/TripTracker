@@ -56,7 +56,7 @@ public class GeofenceViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         title = "Geofence Zones"
@@ -87,7 +87,7 @@ public class GeofenceViewController: UIViewController {
         zoomToCurrentLocation()
     }
 
-    override func viewWillAppear(_ animated: Bool) {
+    public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         tableView.reloadData()
         drawAllZones()
@@ -217,11 +217,11 @@ public class GeofenceViewController: UIViewController {
 
 extension GeofenceViewController: UITableViewDataSource, UITableViewDelegate {
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         GeofenceManager.shared.zones.count
     }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ZoneCell", for: indexPath)
         let zone = GeofenceManager.shared.zones[indexPath.row]
 
@@ -245,7 +245,7 @@ extension GeofenceViewController: UITableViewDataSource, UITableViewDelegate {
         return cell
     }
 
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle,
+    public func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle,
                     forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             GeofenceManager.shared.removeZone(at: indexPath.row)
@@ -254,7 +254,7 @@ extension GeofenceViewController: UITableViewDataSource, UITableViewDelegate {
         }
     }
 
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let zone = GeofenceManager.shared.zones[indexPath.row]
         let region = MKCoordinateRegion(center: zone.coordinate,
@@ -268,7 +268,7 @@ extension GeofenceViewController: UITableViewDataSource, UITableViewDelegate {
 
 extension GeofenceViewController: MKMapViewDelegate {
 
-    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+    public func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let circle = overlay as? MKCircle {
             let renderer = MKCircleRenderer(circle: circle)
             renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.15)
@@ -295,7 +295,7 @@ public class AddGeofenceSheetController: UIViewController {
     private let exitSwitch = UISwitch()
     private let autoStopSwitch = UISwitch()
 
-    init(coordinate: CLLocationCoordinate2D, onAdd: @escaping (GeofenceZone) -> Void) {
+    public init(coordinate: CLLocationCoordinate2D, onAdd: @escaping (GeofenceZone) -> Void) {
         self.coordinate = coordinate
         self.onAdd = onAdd
         super.init(nibName: nil, bundle: nil)
@@ -303,7 +303,7 @@ public class AddGeofenceSheetController: UIViewController {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         view.backgroundColor = .white
@@ -486,7 +486,7 @@ public class AddGeofenceSheetController: UIViewController {
 // MARK: - UITextFieldDelegate
 
 extension AddGeofenceSheetController: UITextFieldDelegate {
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
         return true
     }

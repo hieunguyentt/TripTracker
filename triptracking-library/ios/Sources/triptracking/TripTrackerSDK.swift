@@ -268,7 +268,7 @@ private class LocationPermissionDelegate: NSObject, CLLocationManagerDelegate {
         manager.requestWhenInUseAuthorization()
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         if status == .authorizedAlways || status == .authorizedWhenInUse {
             print("✅ Location permission granted via delegate — auto-starting tracking")

@@ -16,7 +16,7 @@ public class DatabaseManager {
     
     private init() {}
     
-    func initializeDatabase() {
+    public func initializeDatabase() {
         let fileManager = FileManager.default
         guard let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             print("❌ Cannot access documents directory")
@@ -107,7 +107,7 @@ public class DatabaseManager {
     
     // MARK: - Trip Operations
     
-    func startTrip() -> Int64 {
+    public func startTrip() -> Int64 {
         let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
         let sql = "INSERT INTO trips (start_time, status) VALUES (?, 'active');"
         
@@ -128,7 +128,7 @@ public class DatabaseManager {
         return -1
     }
     
-    func endTrip(id: Int64, distance: Double, duration: Int64, steps: Int) {
+    public func endTrip(id: Int64, distance: Double, duration: Int64, steps: Int) {
         let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
         let sql = """
         UPDATE trips 
@@ -153,7 +153,7 @@ public class DatabaseManager {
         sqlite3_finalize(statement)
     }
     
-    func getAllTrips() -> [Trip] {
+    public func getAllTrips() -> [Trip] {
         var trips: [Trip] = []
         let sql = "SELECT trip_id, start_time, end_time, distance, duration, steps, status FROM trips ORDER BY start_time DESC;"
         
@@ -186,7 +186,7 @@ public class DatabaseManager {
         return trips
     }
     
-    func getActiveTripId() -> Int64? {
+    public func getActiveTripId() -> Int64? {
         let sql = "SELECT trip_id FROM trips WHERE status = 'active' LIMIT 1;"
         var statement: OpaquePointer?
         var tripId: Int64?
@@ -200,7 +200,7 @@ public class DatabaseManager {
     }
 
     /// Returns (tripId, startTimeMs) for the interrupted active trip, or nil if none.
-    func getActiveTripInfo() -> (id: Int64, startTimeMs: Int64)? {
+    public func getActiveTripInfo() -> (id: Int64, startTimeMs: Int64)? {
         let sql = "SELECT trip_id, start_time FROM trips WHERE status = 'active' ORDER BY start_time DESC LIMIT 1;"
         var statement: OpaquePointer?
         var result: (Int64, Int64)?
@@ -215,7 +215,7 @@ public class DatabaseManager {
     }
 
     /// Returns the timestamp (ms) of the most recent location saved for a trip, or nil.
-    func getLastLocationTimestamp(tripId: Int64) -> Int64? {
+    public func getLastLocationTimestamp(tripId: Int64) -> Int64? {
         let sql = "SELECT MAX(timestamp) FROM locations WHERE trip_id = ?;"
         var statement: OpaquePointer?
         var result: Int64?
@@ -232,7 +232,7 @@ public class DatabaseManager {
     
     // MARK: - Location Operations
     
-    func saveLocation(tripId: Int64, location: LocationPoint) {
+    public func saveLocation(tripId: Int64, location: LocationPoint) {
         // Dedup: skip if a point with the same tripId + timestamp already exists
         let checkSql = "SELECT COUNT(*) FROM locations WHERE trip_id = ? AND timestamp = ?;"
         var checkStmt: OpaquePointer?
@@ -270,7 +270,7 @@ public class DatabaseManager {
         sqlite3_finalize(statement)
     }
     
-    func saveCachedLocation(location: LocationPoint) {
+    public func saveCachedLocation(location: LocationPoint) {
         // Dedup: skip if a cached point with the same timestamp already exists
         let checkSql = "SELECT COUNT(*) FROM location_cache WHERE cache_timestamp = ?;"
         var checkStmt: OpaquePointer?
@@ -309,7 +309,7 @@ public class DatabaseManager {
         cleanOldCache()
     }
     
-    func getLocationsForTrip(tripId: Int64) -> [LocationPoint] {
+    public func getLocationsForTrip(tripId: Int64) -> [LocationPoint] {
         var locations: [LocationPoint] = []
         let sql = """
         SELECT location_id, trip_id, latitude, longitude, altitude, accuracy, speed, bearing, timestamp, source
@@ -355,7 +355,7 @@ public class DatabaseManager {
         return locations
     }
     
-    func getCachedLocations(date: String? = nil) -> [LocationPoint] {
+    public func getCachedLocations(date: String? = nil) -> [LocationPoint] {
         var locations: [LocationPoint] = []
         var sql = """
         SELECT cache_id, latitude, longitude, altitude, accuracy, speed, bearing, cache_timestamp, source
@@ -408,7 +408,7 @@ public class DatabaseManager {
         return locations
     }
     
-    func getDatesWithLocations() -> [(date: String, count: Int)] {
+    public func getDatesWithLocations() -> [(date: String, count: Int)] {
         var dates: [(String, Int)] = []
         let sql = """
         SELECT DATE(cache_timestamp / 1000, 'unixepoch') as date, COUNT(*) as count
@@ -450,7 +450,7 @@ public class DatabaseManager {
         }
     }
     
-    func getCachedLocationCount() -> Int {
+    public func getCachedLocationCount() -> Int {
         let sql = "SELECT COUNT(*) FROM location_cache;"
         var statement: OpaquePointer?
         var count = 0
@@ -465,7 +465,7 @@ public class DatabaseManager {
         return count
     }
     
-    func saveContext() {
+    public func saveContext() {
         // SQLite auto-commits, but we can add any cleanup here if needed
     }
     

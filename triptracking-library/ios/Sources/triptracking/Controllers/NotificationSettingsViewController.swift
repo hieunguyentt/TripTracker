@@ -59,7 +59,7 @@ public class NotificationSettingsViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
         title = "Notifications"

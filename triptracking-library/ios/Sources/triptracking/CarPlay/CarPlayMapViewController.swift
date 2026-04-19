@@ -97,7 +97,7 @@ public class CarPlayMapViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         setupMap()
         setupInfoBar()
@@ -163,7 +163,7 @@ public class CarPlayMapViewController: UIViewController {
 
     // MARK: - Public API (called by CarPlayMapManager)
 
-    func updateTripInfo(speed: String, distance: String, duration: String, state: String) {
+    public func updateTripInfo(speed: String, distance: String, duration: String, state: String) {
         DispatchQueue.main.async { [weak self] in
             self?.speedValueLabel.text = speed
             self?.distanceValueLabel.text = distance
@@ -172,7 +172,7 @@ public class CarPlayMapViewController: UIViewController {
         }
     }
 
-    func updateUserLocation() {
+    public func updateUserLocation() {
         guard isFollowingUser else { return }
         if let coord = LocationTrackingService.shared.lastKnownCoordinate {
             let region = MKCoordinateRegion(
@@ -184,7 +184,7 @@ public class CarPlayMapViewController: UIViewController {
         }
     }
 
-    func recenterOnUser() {
+    public func recenterOnUser() {
         isFollowingUser = true
         mapView.userTrackingMode = .followWithHeading
         if let coord = LocationTrackingService.shared.lastKnownCoordinate {
@@ -197,21 +197,21 @@ public class CarPlayMapViewController: UIViewController {
         }
     }
 
-    func zoomIn() {
+    public func zoomIn() {
         var region = mapView.region
         region.span.latitudeDelta /= 2
         region.span.longitudeDelta /= 2
         mapView.setRegion(region, animated: true)
     }
 
-    func zoomOut() {
+    public func zoomOut() {
         var region = mapView.region
         region.span.latitudeDelta = min(region.span.latitudeDelta * 2, 10)
         region.span.longitudeDelta = min(region.span.longitudeDelta * 2, 10)
         mapView.setRegion(region, animated: true)
     }
 
-    func pan(direction: CPMapTemplate.PanDirection) {
+    public func pan(direction: CPMapTemplate.PanDirection) {
         isFollowingUser = false
         mapView.userTrackingMode = .none
 
@@ -250,7 +250,7 @@ public class CarPlayMapViewController: UIViewController {
 
 extension CarPlayMapViewController: MKMapViewDelegate {
 
-    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+    public func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let circle = overlay as? MKCircle {
             let renderer = MKCircleRenderer(circle: circle)
             renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.15)

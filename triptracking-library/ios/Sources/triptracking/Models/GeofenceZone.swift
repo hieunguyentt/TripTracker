@@ -9,27 +9,27 @@ import Foundation
 import CoreLocation
 
 public struct GeofenceZone: Codable {
-    let id: String              // UUID
-    var name: String            // e.g. "Home", "Office"
-    var latitude: Double
-    var longitude: Double
-    var radius: Double          // metres (50–1000)
-    var notifyOnEnter: Bool
-    var notifyOnExit: Bool
-    var autoStopOnEnter: Bool   // auto-end trip when entering this zone
+    public let id: String              // UUID
+    public var name: String            // e.g. "Home", "Office"
+    public var latitude: Double
+    public var longitude: Double
+    public var radius: Double          // metres (50–1000)
+    public var notifyOnEnter: Bool
+    public var notifyOnExit: Bool
+    public var autoStopOnEnter: Bool   // auto-end trip when entering this zone
 
-    var coordinate: CLLocationCoordinate2D {
+    public var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
-    var region: CLCircularRegion {
+    public var region: CLCircularRegion {
         let r = CLCircularRegion(center: coordinate, radius: radius, identifier: id)
         r.notifyOnEntry = notifyOnEnter
         r.notifyOnExit  = notifyOnExit
         return r
     }
 
-    init(name: String, latitude: Double, longitude: Double,
+    public init(name: String, latitude: Double, longitude: Double,
          radius: Double = 200, notifyOnEnter: Bool = true,
          notifyOnExit: Bool = true, autoStopOnEnter: Bool = false) {
         self.id              = UUID().uuidString
