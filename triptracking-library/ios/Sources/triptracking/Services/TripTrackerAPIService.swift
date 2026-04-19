@@ -55,6 +55,7 @@ public final class TripTrackerAPIService {
     // ── Update vehicle_id at any time (e.g. user switches vehicle) ──
     public func updateVehicleId(_ vehicleId: String) {
         config.vehicleId = vehicleId
+        config.routeId = vehicleId
         print("📡 API vehicle_id updated → \(vehicleId)")
     }
 

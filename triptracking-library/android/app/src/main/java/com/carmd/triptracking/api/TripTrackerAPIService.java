@@ -71,6 +71,7 @@ public final class TripTrackerAPIService {
     // ── Update vehicle_id at any time ──
     public void updateVehicleId(String vehicleId) {
         this.vehicleId = vehicleId != null ? vehicleId : "";
+        this.routeId = vehicleId != null ? vehicleId : "";
         Log.i(TAG, "vehicle_id updated → " + this.vehicleId);
     }
 
