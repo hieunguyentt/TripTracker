@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.author       = { 'Hieu Nguyen' => 'hieu.nguyen@sw.innova.com' }
   s.homepage     = 'https://github.com/hieunguyentt/TripTracker'
   s.source       = { :git => 'https://github.com/hieunguyentt/TripTracker.git', :tag => s.version.to_s }
-  s.source_files = 'triptracking-library/capacitor_plugin/ios/Plugin/**/*.{swift,h,m,c,cc,mm,cpp}'
+  s.source_files = 'ios/Plugin/**/*.{swift,h,m,c,cc,mm,cpp}'
   s.ios.deployment_target = '14.0'
   s.dependency 'Capacitor'
   s.dependency 'triptracking'
