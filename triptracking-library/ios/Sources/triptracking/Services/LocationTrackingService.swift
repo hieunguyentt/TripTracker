@@ -37,15 +37,15 @@ import UIKit
 
 protocol AutoTripDelegate: AnyObject {
     /// Called when auto-trip starts a new trip.
-    public func autoTripDidStart(tripId: Int64)
+    func autoTripDidStart(tripId: Int64)
     /// Called when auto-trip ends a trip after prolonged stillness.
-    public func autoTripDidEnd(tripId: Int64, reason: String)
+    func autoTripDidEnd(tripId: Int64, reason: String)
 }
 
 protocol LocationUpdateDelegate: AnyObject {
-    public func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
-    public func didUpdateStats(speed: Float, distance: Double, duration: Int64)
-    public func didChangeTrackingState(isTracking: Bool)
+    func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
+    func didUpdateStats(speed: Float, distance: Double, duration: Int64)
+    func didChangeTrackingState(isTracking: Bool)
 }
 
 public class LocationTrackingService: NSObject {
