@@ -82,7 +82,7 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
-                "route_Id": routeId ?? config.routeId
+                "route_Id": isMoving ? (routeId ?? config.routeId) : ""
             ]]
         ]
         // Only include vehicle_Id during active trip and if configured
