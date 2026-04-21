@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import UIKit
+import Network
 
 // MARK: - API Configuration
 
@@ -37,7 +38,10 @@ public struct TripTrackerAPIConfig {
 
 public final class TripTrackerAPIService {
     public static let shared = TripTrackerAPIService()
-    private init() {}
+    private init() {
+        loadPendingQueue()
+        startNetworkMonitor()
+    }
 
     public var config = TripTrackerAPIConfig()
     public var isEnabled: Bool { config.isConfigured }
@@ -52,7 +56,114 @@ public final class TripTrackerAPIService {
         return URLSession(configuration: cfg)
     }()
 
-    // ── Update vehicle_id at any time (e.g. user switches vehicle) ──
+    // ═══════════════════════════════════════════════════════════════
+    // Retry Queue — persists failed requests to disk, resends on network
+    // ═══════════════════════════════════════════════════════════════
+
+    private var pendingQueue: [[String: Any]] = []  // [{url, body}]
+    private let queueLock = NSLock()
+    private let maxQueueSize = 500
+    private var isFlushing = false
+
+    private var queueFileURL: URL? {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
+            .first?.appendingPathComponent("triptracker_pending_api.json")
+    }
+
+    private func loadPendingQueue() {
+        guard let url = queueFileURL,
+              let data = try? Data(contentsOf: url),
+              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+        pendingQueue = arr
+        print("📡 API queue loaded: \(arr.count) pending requests")
+    }
+
+    private func savePendingQueue() {
+        guard let url = queueFileURL else { return }
+        queueLock.lock()
+        defer { queueLock.unlock() }
+        if let data = try? JSONSerialization.data(withJSONObject: pendingQueue) {
+            try? data.write(to: url)
+        }
+    }
+
+    private func enqueue(url: String, body: [String: Any]) {
+        queueLock.lock()
+        pendingQueue.append(["url": url, "body": body, "ts": Date().timeIntervalSince1970])
+        // Trim oldest if over limit
+        if pendingQueue.count > maxQueueSize {
+            pendingQueue.removeFirst(pendingQueue.count - maxQueueSize)
+        }
+        queueLock.unlock()
+        savePendingQueue()
+        print("📡 API queued (total: \(pendingQueue.count)) — will retry when online")
+    }
+
+    /// Flush all pending requests. Called when network becomes available.
+    public func flushQueue() {
+        guard !isFlushing else { return }
+        queueLock.lock()
+        let items = pendingQueue
+        queueLock.unlock()
+        guard !items.isEmpty else { return }
+
+        isFlushing = true
+        print("📡 Flushing \(items.count) pending API requests…")
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            var successCount = 0
+            for item in items {
+                guard let urlStr = item["url"] as? String,
+                      let body = item["body"] as? [String: Any] else { continue }
+
+                let ok = self?.postSync(url: urlStr, body: body) ?? false
+                if ok {
+                    successCount += 1
+                    // Remove from queue
+                    self?.queueLock.lock()
+                    if let idx = self?.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
+                        self?.pendingQueue.remove(at: idx)
+                    }
+                    self?.queueLock.unlock()
+                } else {
+                    // Still offline — stop flushing
+                    break
+                }
+            }
+            self?.savePendingQueue()
+            self?.isFlushing = false
+            let remaining = self?.pendingQueue.count ?? 0
+            print("📡 Flush done: \(successCount) sent, \(remaining) remaining")
+        }
+    }
+
+    /// Number of pending requests in queue
+    public var pendingCount: Int { pendingQueue.count }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Network Monitor — auto-flush when connectivity returns
+    // ═══════════════════════════════════════════════════════════════
+
+    private var networkMonitor: Any?  // NWPathMonitor (stored as Any to avoid import issues)
+
+    private func startNetworkMonitor() {
+        if #available(iOS 12.0, *) {
+            let monitor = NWPathMonitor()
+            monitor.pathUpdateHandler = { [weak self] path in
+                if path.status == .satisfied && (self?.pendingQueue.isEmpty == false) {
+                    print("📡 Network restored — flushing pending queue")
+                    self?.flushQueue()
+                }
+            }
+            monitor.start(queue: DispatchQueue.global(qos: .utility))
+            networkMonitor = monitor
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Public API
+    // ═══════════════════════════════════════════════════════════════
+
     public func updateVehicleId(_ vehicleId: String) {
         config.vehicleId = vehicleId
         config.routeId = vehicleId
@@ -86,6 +197,7 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
+                
             ]]
         ]
         // Only include vehicle_Id during active trip and if configured
@@ -93,8 +205,8 @@ public final class TripTrackerAPIService {
             body["vehicle_Id"] = config.vehicleId
             body["route_Id"] = routeId ?? config.routeId
         }
-        post(url: config.pingURL, body: body) { ok in
-            print("📡 API ping \(ok ? "OK" : "FAIL"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
+        postWithRetry(url: config.pingURL, body: body) { ok in
+            print("📡 API ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }
     }
 
@@ -110,14 +222,15 @@ public final class TripTrackerAPIService {
         let arr: [[String: Any]] = locations.map { loc, moving, spd, activity, ts in
             ["is_Moving": moving, "timestamp": fmt.string(from: ts),
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
-             "speed": spd, "activityType": activity, "route_Id": routeId ?? config.routeId]
+             "speed": spd, "activityType": activity]
         }
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
+            body["route_Id"] = routeId ?? config.routeId
         }
-        post(url: config.pingURL, body: body) { ok in
-            print("📡 API batch (\(locations.count)): \(ok ? "OK" : "FAIL")")
+        postWithRetry(url: config.pingURL, body: body) { ok in
+            print("📡 API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
         }
     }
 
@@ -134,15 +247,27 @@ public final class TripTrackerAPIService {
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude
         ]
-        post(url: config.endURL, body: body) { [weak self] ok in
-            print("📡 API trip-end \(ok ? "OK" : "FAIL")")
-            // Stop including vehicle_id after trip end
+        postWithRetry(url: config.endURL, body: body) { [weak self] ok in
+            print("📡 API trip-end \(ok ? "OK" : "QUEUED")")
             self?.includeVehicleId = false
+        }
+    }
+
+    public func setRouteId(_ id: String) { config.routeId = id }
+
+    // ═══════════════════════════════════════════════════════════════
+    // HTTP — post with automatic retry queue on failure
+    // ═══════════════════════════════════════════════════════════════
+
+    private func postWithRetry(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
+        post(url: url, body: body) { [weak self] ok in
             if !ok {
-                DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                    self?.post(url: self?.config.endURL ?? "", body: body, completion: nil)
-                }
+                self?.enqueue(url: url, body: body)
+            } else if self?.pendingQueue.isEmpty == false {
+                // Success — try flushing pending queue too
+                self?.flushQueue()
             }
+            completion?(ok)
         }
     }
 
@@ -161,5 +286,28 @@ public final class TripTrackerAPIService {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             completion?((200...299).contains(code))
         }.resume()
+    }
+
+    /// Synchronous POST — used by flush queue on background thread
+    private func postSync(url urlStr: String, body: [String: Any]) -> Bool {
+        guard let url = URL(string: urlStr) else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !config.authorizationKey.isEmpty { req.setValue(config.authorizationKey, forHTTPHeaderField: "AuthorizationKey") }
+        if !config.apiAuthKey.isEmpty { req.setValue(config.apiAuthKey, forHTTPHeaderField: "api-auth-key") }
+        if !config.apiAuthToken.isEmpty { req.setValue(config.apiAuthToken, forHTTPHeaderField: "api-auth-token") }
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else { return false }
+        req.httpBody = httpBody
+
+        let sem = DispatchSemaphore(value: 0)
+        var success = false
+        session.dataTask(with: req) { _, response, _ in
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            success = (200...299).contains(code)
+            sem.signal()
+        }.resume()
+        sem.wait()
+        return success
     }
 }

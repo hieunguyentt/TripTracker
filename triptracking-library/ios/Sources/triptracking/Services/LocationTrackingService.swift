@@ -1365,6 +1365,15 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         let isArrival   = visit.arrivalDate   != .distantPast
         print("📍 Visit event — arrival:\(isArrival) departure:\(isDeparture) coord:(\(visit.coordinate.latitude), \(visit.coordinate.longitude))")
 
+        // Send a ping on every visit event (wakes from terminated)
+        if let loc = locationManager.location {
+            let pt = LocationPoint(from: loc, source: .gps)
+            sendAPIPing(location: pt, source: .gps)
+            DatabaseManager.shared.saveCachedLocation(location: pt)
+            lastKnownLocation = loc
+            persistLastGPSTimestamp()
+        }
+
         if isTracking {
             // Check if trip should auto-end (device arrived somewhere and stayed)
             let speed = effectiveSpeed()

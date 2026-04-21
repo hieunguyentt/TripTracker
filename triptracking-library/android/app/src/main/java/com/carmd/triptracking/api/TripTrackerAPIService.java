@@ -1,24 +1,29 @@
 package com.carmd.triptracking.api;
 
+import android.content.Context;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.Build;
 import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class TripTrackerAPIService {
     private static final String TAG = "TripTrackerAPI";
+    private static final int MAX_QUEUE_SIZE = 500;
     private static TripTrackerAPIService instance;
 
     // Config
@@ -38,12 +43,160 @@ public final class TripTrackerAPIService {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    // ═══════════════════════════════════════════════════════════════
+    // Retry Queue — persists failed requests to disk
+    // ═══════════════════════════════════════════════════════════════
+
+    private final CopyOnWriteArrayList<String> pendingQueue = new CopyOnWriteArrayList<>();
+    private volatile boolean isFlushing = false;
+    private Context appContext;
+    private ConnectivityManager.NetworkCallback networkCallback;
+
     private TripTrackerAPIService() {}
 
     public static synchronized TripTrackerAPIService getInstance() {
         if (instance == null) instance = new TripTrackerAPIService();
         return instance;
     }
+
+    /** Call once with app context to enable queue persistence + network monitoring */
+    public void setContext(Context ctx) {
+        this.appContext = ctx.getApplicationContext();
+        loadPendingQueue();
+        startNetworkMonitor();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Queue Persistence
+    // ═══════════════════════════════════════════════════════════════
+
+    private File getQueueFile() {
+        if (appContext == null) return null;
+        return new File(appContext.getCacheDir(), "triptracker_pending_api.json");
+    }
+
+    private void loadPendingQueue() {
+        File file = getQueueFile();
+        if (file == null || !file.exists()) return;
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            reader.close();
+
+            JSONArray arr = new JSONArray(sb.toString());
+            pendingQueue.clear();
+            for (int i = 0; i < arr.length(); i++) {
+                pendingQueue.add(arr.getString(i));
+            }
+            Log.i(TAG, "Queue loaded: " + pendingQueue.size() + " pending requests");
+        } catch (Exception e) {
+            Log.e(TAG, "Load queue error: " + e.getMessage());
+        }
+    }
+
+    private void savePendingQueue() {
+        File file = getQueueFile();
+        if (file == null) return;
+        try {
+            JSONArray arr = new JSONArray();
+            for (String item : pendingQueue) arr.put(item);
+            FileWriter writer = new FileWriter(file);
+            writer.write(arr.toString());
+            writer.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Save queue error: " + e.getMessage());
+        }
+    }
+
+    private void enqueue(String url, JSONObject body) {
+        try {
+            JSONObject item = new JSONObject();
+            item.put("url", url);
+            item.put("body", body.toString());
+            item.put("ts", System.currentTimeMillis());
+            pendingQueue.add(item.toString());
+
+            // Trim oldest if over limit
+            while (pendingQueue.size() > MAX_QUEUE_SIZE) {
+                pendingQueue.remove(0);
+            }
+            savePendingQueue();
+            Log.i(TAG, "Queued (total: " + pendingQueue.size() + ") — will retry when online");
+        } catch (Exception e) {
+            Log.e(TAG, "Enqueue error: " + e.getMessage());
+        }
+    }
+
+    /** Flush all pending requests. Called when network becomes available. */
+    public void flushQueue() {
+        if (isFlushing || pendingQueue.isEmpty()) return;
+        isFlushing = true;
+
+        executor.execute(() -> {
+            int sent = 0;
+            Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
+
+            Iterator<String> it = pendingQueue.iterator();
+            while (it.hasNext()) {
+                try {
+                    JSONObject item = new JSONObject(it.next());
+                    String url = item.getString("url");
+                    JSONObject body = new JSONObject(item.getString("body"));
+
+                    boolean ok = post(url, body);
+                    if (ok) {
+                        it.remove();
+                        sent++;
+                    } else {
+                        break;  // Still offline — stop flushing
+                    }
+                } catch (Exception e) {
+                    it.remove();  // Corrupt entry — remove
+                }
+            }
+            savePendingQueue();
+            isFlushing = false;
+            Log.i(TAG, "Flush done: " + sent + " sent, " + pendingQueue.size() + " remaining");
+        });
+    }
+
+    public int getPendingCount() { return pendingQueue.size(); }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Network Monitor — auto-flush when connectivity returns
+    // ═══════════════════════════════════════════════════════════════
+
+    private void startNetworkMonitor() {
+        if (appContext == null) return;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return;
+
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    if (!pendingQueue.isEmpty()) {
+                        Log.i(TAG, "Network restored — flushing pending queue");
+                        flushQueue();
+                    }
+                }
+            };
+
+            NetworkRequest request = new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build();
+            cm.registerNetworkCallback(request, networkCallback);
+            Log.i(TAG, "Network monitor started");
+        } catch (Exception e) {
+            Log.e(TAG, "Network monitor error: " + e.getMessage());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Configure
+    // ═══════════════════════════════════════════════════════════════
 
     // ── Full config (legacy — kept for backwards compat) ──
     public void configure(String pingURL, String endURL, String userId, String vehicleId,
@@ -65,7 +218,12 @@ public final class TripTrackerAPIService {
         this.authorizationKey = authorizationKey != null ? authorizationKey : "";
         this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";
         this.apiAuthToken = apiAuthToken != null ? apiAuthToken : "";
-        Log.i(TAG, "API configured: ping=" + this.pingURL + " end=" + this.endURL + " user=" + this.userId);
+        Log.i(TAG, "API configured: ping=" + this.pingURL + " user=" + this.userId);
+
+        // Try flushing any pending requests now that config may have URLs
+        if (isEnabled() && !pendingQueue.isEmpty()) {
+            flushQueue();
+        }
     }
 
     // ── Update vehicle_id at any time ──
@@ -90,7 +248,10 @@ public final class TripTrackerAPIService {
         Log.i(TAG, "Trip ended — vehicle_id will NOT be included until next trip");
     }
 
-    // ── POST /ping/v2 ──
+    // ═══════════════════════════════════════════════════════════════
+    // POST /ping/v2
+    // ═══════════════════════════════════════════════════════════════
+
     public void sendPing(Location location, boolean isMoving, float speed, String activityType) {
         sendPing(location, isMoving, speed, activityType, this.routeId);
     }
@@ -106,7 +267,6 @@ public final class TripTrackerAPIService {
                 locObj.put("longitude", location.getLongitude());
                 locObj.put("speed", speed);
                 locObj.put("activityType", activityType);
-                locObj.put("route_Id", isMoving ? (routeId != null ? routeId : this.routeId) : "");
                 
 
                 JSONArray locArr = new JSONArray();
@@ -118,19 +278,30 @@ public final class TripTrackerAPIService {
                 body.put("location", locArr);
 
                 // Only include vehicle_Id during active trip and if configured
-                if (includeVehicleId && !vehicleId.isEmpty() && isMoving) {
+                if (includeVehicleId && !vehicleId.isEmpty()) {
                     body.put("vehicle_Id", vehicleId);
+                    body.put("route_Id", routeId != null ? routeId : this.routeId);
                 }
 
                 boolean ok = post(pingURL, body);
-                Log.d(TAG, "Ping " + (ok ? "OK" : "FAIL") + ": " + location.getLatitude() + "," + location.getLongitude());
+                if (ok) {
+                    Log.d(TAG, "Ping OK: " + location.getLatitude() + "," + location.getLongitude());
+                    // Success — try flushing pending queue too
+                    if (!pendingQueue.isEmpty()) flushQueue();
+                } else {
+                    Log.d(TAG, "Ping FAIL — queued for retry");
+                    enqueue(pingURL, body);
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Ping error: " + e.getMessage());
             }
         });
     }
 
-    // ── POST /end — vehicle_id NOT included ──
+    // ═══════════════════════════════════════════════════════════════
+    // POST /end
+    // ═══════════════════════════════════════════════════════════════
+
     public void sendTripEnd(Location location) {
         if (!isEnabled()) return;
         if (routeId == null || routeId.isEmpty()) return;
@@ -143,14 +314,14 @@ public final class TripTrackerAPIService {
                 body.put("longitude", location.getLongitude());
 
                 boolean ok = post(endURL, body);
-                Log.d(TAG, "Trip-end " + (ok ? "OK" : "FAIL"));
-
-                // Stop including vehicle_id after trip end
                 includeVehicleId = false;
 
-                if (!ok) {
-                    Thread.sleep(5000);
-                    post(endURL, body);
+                if (ok) {
+                    Log.d(TAG, "Trip-end OK");
+                    if (!pendingQueue.isEmpty()) flushQueue();
+                } else {
+                    Log.d(TAG, "Trip-end FAIL — queued for retry");
+                    enqueue(endURL, body);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Trip-end error: " + e.getMessage());
@@ -158,7 +329,10 @@ public final class TripTrackerAPIService {
         });
     }
 
-    // ── HTTP POST ──
+    // ═══════════════════════════════════════════════════════════════
+    // HTTP POST
+    // ═══════════════════════════════════════════════════════════════
+
     private boolean post(String urlStr, JSONObject body) {
         HttpURLConnection conn = null;
         try {

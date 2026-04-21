@@ -111,10 +111,6 @@ public final class TripTrackerSDK {
             LocationTrackingService.shared.handleSignificantLocationRelaunch()
         }
 
-        if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
-            webServer = LocationWebServer(); webServer?.start()
-        }
-
         NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 

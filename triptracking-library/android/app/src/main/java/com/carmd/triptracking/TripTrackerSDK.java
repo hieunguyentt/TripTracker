@@ -152,7 +152,8 @@ public final class TripTrackerSDK {
             GeofenceManager.registerAll(ctx);
         }
 
-        // API
+        // API — set context for queue persistence + network monitoring
+        TripTrackerAPIService.getInstance().setContext(ctx);
         TripTrackerAPIService.getInstance().configure(
                 config.pingURL, config.endURL, config.userId, config.vehicleId,
                 config.osInfo, config.routeId, config.authorizationKey,
@@ -180,6 +181,7 @@ public final class TripTrackerSDK {
         // Use vehicleId as routeId if routeId is empty
         String effectiveRouteId = (routeId != null && !routeId.isEmpty()) ? routeId : vehicleId;
 
+        TripTrackerAPIService.getInstance().setContext(ctx);
         TripTrackerAPIService.getInstance().configure(
                 pingURL, endURL, userId, vehicleId,
                 osInfo, effectiveRouteId, authKey, apiAuthKey, apiAuthToken);
