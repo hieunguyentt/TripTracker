@@ -86,12 +86,12 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
-                "route_Id": routeId ?? config.routeId
             ]]
         ]
         // Only include vehicle_Id during active trip and if configured
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
+            body["route_Id"] = routeId ?? config.routeId
         }
         post(url: config.pingURL, body: body) { ok in
             print("📡 API ping \(ok ? "OK" : "FAIL"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
