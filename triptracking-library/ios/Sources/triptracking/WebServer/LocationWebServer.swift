@@ -12,7 +12,7 @@ import Network
 public class LocationWebServer {
     
     private var listener: NWListener?
-    private var port: UInt16 = 8080
+    private var port: UInt16 = 8081
     private let fallbackPorts: [UInt16] = [8080, 8081, 8082, 8083]
     private var connections: [NWConnection] = []
     
