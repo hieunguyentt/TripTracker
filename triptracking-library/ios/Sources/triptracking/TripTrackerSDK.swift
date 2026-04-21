@@ -75,6 +75,8 @@ public final class TripTrackerSDK {
 
     // ── Initialize with defaults ──
     public static func initialize(launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
+        let status = CLLocationManager.authorizationStatus()
+        print("📍TripTracker Location auth status: \(status.rawValue)")
         initialize(config: TripTrackerConfig(), launchOptions: launchOptions)
     }
 
