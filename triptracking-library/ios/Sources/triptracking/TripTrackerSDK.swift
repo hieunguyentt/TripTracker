@@ -234,22 +234,17 @@ public final class TripTrackerSDK {
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
 
     public static func willTerminate() {
-        // Save database
         DatabaseManager.shared.saveContext()
-
-        // Ensure significant location changes survive termination
-        // (iOS relaunches app when significant location change occurs)
-        let lm = LocationTrackingService.shared
-        lm.locationManager.startMonitoringSignificantLocationChanges()
-        lm.locationManager.startMonitoringVisits()
-
-        // If trip is active, save a checkpoint so we can resume on relaunch
-        if lm.isTracking {
-            print("⚠️ App terminating during active trip #\(lm.currentTripId) — saving checkpoint")
-            lm.persistLastGPSTimestamp()
-        }
-
-        print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
+    
+    // Re-ensure background tracking survives termination
+    LocationTrackingService.shared.ensureBackgroundTracking()
+    
+    if LocationTrackingService.shared.isTracking {
+        print("⚠️ App terminating during active trip #\(LocationTrackingService.shared.currentTripId) — saving checkpoint")
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
+    }
+    
+    print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
     }
 
     // ── Scene Configuration ──
