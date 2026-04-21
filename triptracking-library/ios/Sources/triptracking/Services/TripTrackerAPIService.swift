@@ -71,7 +71,11 @@ public final class TripTrackerAPIService {
 
     // POST /ping/v2
     public func sendPing(location: CLLocation, isMoving: Bool, speed: Float, activityType: String, routeId: String? = nil) {
-        guard isEnabled else { return }
+        if(isEnabled) {
+            print("📡 TripTracker Sending ping for location: \(location.coordinate.latitude),\(location.coordinate.longitude)")
+        }else{
+            print("📡 Ping NOT sent because API config is incomplete")
+        }
         var body: [String: Any] = [
             "user_Id": config.userId,
             "os_Info": config.osInfo,
@@ -96,6 +100,11 @@ public final class TripTrackerAPIService {
 
     // POST /ping/v2 batch
     public func sendPingBatch(locations: [(CLLocation, Bool, Float, String, Date)], routeId: String? = nil) {
+        if(isEnabled) {
+            print("📡 TripTracker Sending batch ping for \(locations.count) locations")
+        } else {
+            print("📡 TripTracker Batch ping NOT sent because API config is incomplete")
+        }
         guard isEnabled, !locations.isEmpty else { return }
         let fmt = ISO8601DateFormatter()
         let arr: [[String: Any]] = locations.map { loc, moving, spd, activity, ts in
@@ -114,7 +123,11 @@ public final class TripTrackerAPIService {
 
     // POST /end — vehicle_id NOT included after trip end
     public func sendTripEnd(location: CLLocation) {
-        guard isEnabled else { return }
+        if(isEnabled) {
+            print("📡 TripTracker Sending trip end for location: \(location.coordinate.latitude),\(location.coordinate.longitude)")
+        }else{
+            print("📡 Trip end NOT sent because API config is incomplete")
+        }
         let body: [String: Any] = [
             "user_Id": config.userId,
             "timestamp": ISO8601DateFormatter().string(from: Date()),
