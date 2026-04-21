@@ -18,6 +18,10 @@ public class LocationWebServer {
     public init() {}
 
     public func start() {
+        guard UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") else {
+            print("🌐 Web monitor disabled — skip start")
+            return   // ← return ngay nếu disabled
+        }
         do {
             // Configure TCP parameters — allow port reuse so the server
             // can restart cleanly after an app backgrounding cycle.
