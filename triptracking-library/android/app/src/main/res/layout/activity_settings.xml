@@ -615,7 +615,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Runs an HTTP server on port 8080 for live location viewing.\nTurn off to save battery when not needed."
+                android:text="Runs an HTTP server on port 8081 for live location viewing.\nTurn off to save battery when not needed."
                 android:textColor="#8E8E93"
                 android:textSize="13sp" />
 

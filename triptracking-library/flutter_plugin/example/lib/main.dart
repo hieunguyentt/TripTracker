@@ -147,7 +147,7 @@ class _TripTrackerPageState extends State<TripTrackerPage> {
 
           SwitchListTile(
             title: const Text('Web Monitor'),
-            subtitle: const Text('HTTP server on :8080'),
+            subtitle: const Text('HTTP server on :8081'),
             value: _settings?.webMonitorEnabled ?? false,
             onChanged: (v) async {
               await TripTracker.updateSetting('webMonitorEnabled', v);

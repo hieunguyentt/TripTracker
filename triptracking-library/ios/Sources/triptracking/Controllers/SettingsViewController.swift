@@ -296,7 +296,7 @@ public class SettingsViewController: UIViewController {
         webLabel.translatesAutoresizingMaskIntoConstraints = false
         let webSubtitle = UILabel()
         let webEnabled = UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
-        webSubtitle.text = "Runs an HTTP server on port 8080 for live location viewing.\nTurn off to save battery when not needed."
+        webSubtitle.text = "Runs an HTTP server on port 8081 for live location viewing.\nTurn off to save battery when not needed."
         webSubtitle.font = .systemFont(ofSize: 13)
         webSubtitle.textColor = .secondaryLabel
         webSubtitle.numberOfLines = 0
@@ -570,9 +570,9 @@ public class SettingsViewController: UIViewController {
             freeifaddrs(ifaddr)
         }
 
-        if let ip = wifiIP { return "http://\(ip):8080" }
-        if let ip = cellularIP { return "http://\(ip):8080" }
-        return "http://127.0.0.1:8080"
+        if let ip = wifiIP { return "http://\(ip):8081" }
+        if let ip = cellularIP { return "http://\(ip):8081" }
+        return "http://127.0.0.1:8081"
     }
 
     @objc private func geofenceToggled() {

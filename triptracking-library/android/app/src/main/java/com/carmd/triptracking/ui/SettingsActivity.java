@@ -381,7 +381,7 @@ public class SettingsActivity extends AppCompatActivity {
     // ── Web Monitor helpers ─────────────────────────────────────────────
 
     private void openWebMonitor() {
-        String url = "http://" + getWifiIpAddress() + ":8080";
+        String url = "http://" + getWifiIpAddress() + ":8081";
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)));
         } catch (Exception e) {
@@ -390,7 +390,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void copyWebMonitorUrl() {
-        String url = "http://" + getWifiIpAddress() + ":8080";
+        String url = "http://" + getWifiIpAddress() + ":8081";
         android.content.ClipboardManager clipboard =
                 (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Web Monitor URL", url));

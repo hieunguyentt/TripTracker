@@ -22,7 +22,7 @@ import java.util.Locale;
  */
 public class LocationWebServer {
     private static final String TAG = "LocationWebServer";
-    private static final int PORT = 8080;
+    private static final int PORT = 8081;
     
     private ServerSocket serverSocket;
     private Thread serverThread;
