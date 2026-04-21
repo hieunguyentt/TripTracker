@@ -128,17 +128,16 @@ public final class TripTrackerSDK {
 
         _initialized = true
         // Web server
-        let isLocationRelaunch = launchOptions?[.location] != nil
-    let isBackground = UIApplication.shared.applicationState == .background
+        let isBackground = UIApplication.shared.applicationState == .background
 
-    if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
-        && !isLocationRelaunch
-        && !isBackground {
-        webServer = LocationWebServer()
-        webServer?.start()
-    } else {
-        print("⏭️ WebServer skipped — background/location relaunch")
-    }
+        if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
+            && !isLocationRelaunch
+            && !isBackground {
+            webServer = LocationWebServer()
+            webServer?.start()
+        } else {
+            print("⏭️ WebServer skipped — background/location relaunch")
+        }
         
         print("✅ TripTrackerSDK initialized")
     }
