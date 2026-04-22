@@ -275,18 +275,13 @@ public final class TripTrackerAPIService {
                 JSONObject body = new JSONObject();
                 body.put("user_Id", userId);
                 body.put("os_Info", osInfo);
-                body.put("location", locArr);
-
-                Log.d(TAG, "Ping vehicle " + vehicleId + "- routeId: " + routeId + "- includeVehicleId: " + includeVehicleId   );
-
+                
                 // Only include vehicle_Id during active trip and if configured
                 if (includeVehicleId && !vehicleId.isEmpty()) {
                     body.put("vehicle_Id", vehicleId);
-                    body.put("route_Id", vehicleId);
-                    Log.d(TAG, "Ping route_Id: " + routeId != null ? routeId : this.routeId);
-                }else{
-                    Log.d(TAG, "Ping without vehicle_IdvehicleId: " + vehicleId + "- routeId: " + routeId + "- includeVehicleId: " + includeVehicleId   );
+                    body.put("route_Id", routeId != null ? routeId : this.routeId);
                 }
+                body.put("location", locArr);
 
                 boolean ok = post(pingURL, body);
                 if (ok) {

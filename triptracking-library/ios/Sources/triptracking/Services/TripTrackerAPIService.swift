@@ -197,13 +197,13 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
+                "route_Id": includeVehicleId ? routeId ?? config.routeId : ""
                 
             ]]
         ]
         // Only include vehicle_Id during active trip and if configured
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
-            body["route_Id"] = routeId ?? config.routeId
         }
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡 API ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
@@ -222,12 +222,11 @@ public final class TripTrackerAPIService {
         let arr: [[String: Any]] = locations.map { loc, moving, spd, activity, ts in
             ["is_Moving": moving, "timestamp": fmt.string(from: ts),
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
-             "speed": spd, "activityType": activity]
+             "speed": spd, "activityType": activity, "route_Id": includeVehicleId ? routeId ?? config.routeId : ""]
         }
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
-            body["route_Id"] = routeId ?? config.routeId
         }
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡 API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
