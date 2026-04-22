@@ -55,9 +55,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     // ═══════════════════════════════════════════════════════════════
 
     public override func load() {
-        // Activate the auto-launcher (keeps location alive even before SDK init)
-        _ = TripTrackerAutoLauncher.shared
-
         // Auto-initialize SDK from saved config when app relaunches
         if !TripTrackerSDK.isInitialized {
             let hasSavedConfig = UserDefaults.standard.string(forKey: "tt_api_pingURL") != nil
