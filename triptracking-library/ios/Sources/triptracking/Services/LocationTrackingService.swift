@@ -253,25 +253,22 @@ public class LocationTrackingService: NSObject {
             DispatchQueue.main.async { self.adaptLocationAccuracy(for: state) }
             return
         }
+
+        // ⚠️ CRITICAL: NEVER call stopUpdatingLocation().
+        // GPS must always be running (even at low accuracy) so iOS keeps the
+        // app alive in background. Stopping GPS = iOS kills the app.
+
         switch state {
         case .still, .unknown:
-            if isTracking {
-                // Trip active — keep GPS running for auto-end detection
-                // but reduce accuracy to save battery while stationary
-                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = saveDistanceVehicleM
-                print("📡 GPS LOW-POWER — still but trip active (auto-end detection)")
-            } else {
-                // No trip — STOP GPS entirely.
-                // GPS on a stationary device produces only drift (30-50m jumps)
-                // which wastes battery and triggers false geofence enter/exit.
-                // Significant location changes + visits still wake the app if needed.
-                locationManager.stopUpdatingLocation()
-                print("📡 GPS STOPPED — device is still, no trip (significant changes + visits still active)")
-            }
+            // Sensor handles positioning when still.
+            // GPS stays alive at minimal power — just enough to keep app running.
+            locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+            locationManager.distanceFilter  = 500.0
+            locationManager.startUpdatingLocation()  // ensure still running
+            print("📡 GPS MINIMAL — still/unknown → sensors active, GPS keepalive (3km/500m)")
 
         case .walking, .running, .cycling:
-            // Moderate accuracy for pedestrian movement
+            // GPS active for pedestrian movement
             locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
             locationManager.startUpdatingLocation()
@@ -289,18 +286,18 @@ public class LocationTrackingService: NSObject {
     // MARK: - Public API
 
     public func startBackgroundTracking() {
-        // Start GPS briefly for an initial location fix
+        // Start GPS — NEVER stops (keeps app alive in background)
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
-        print("✅ Background tracking started (GPS + significant changes + visits)")
+        print("✅ Background tracking started (GPS always-on + significant changes + visits)")
 
-        // After initial fix, let motion handler decide whether to keep GPS on.
-        // If device is still, handleMotionActivity → adaptLocationAccuracy(.still) → stops GPS.
-        // This avoids GPS drift when the app launches on a stationary device.
+        // After initial fix, adapt accuracy based on motion state.
+        // Still → GPS stays alive at minimal power (3km accuracy)
+        // Moving → GPS at full accuracy
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             guard let self = self else { return }
             self.adaptLocationAccuracy(for: self.lastMotionState)
@@ -389,6 +386,15 @@ public class LocationTrackingService: NSObject {
         tripStartTime = nil
 
         delegate?.didChangeTrackingState(isTracking: false)
+
+        // Keep significant location changes + visits alive for auto-start detection
+        // after trip ends (and for waking from terminated state)
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()
+
+        // Adapt GPS to current motion state (will stop GPS if still)
+        adaptLocationAccuracy(for: lastMotionState)
+
         print("✅ Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
     }
 
@@ -432,7 +438,39 @@ public class LocationTrackingService: NSObject {
     }
 
     public func ensureBackgroundTracking() {
-        if !isTracking { startBackgroundTracking() }
+        // Always re-ensure background location is active.
+        locationManager.allowsBackgroundLocationUpdates    = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.showsBackgroundLocationIndicator   = true
+
+        // Significant changes + visits survive termination — always keep active
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()
+
+        // ALWAYS keep GPS alive — never let it stop.
+        // Use current motion state to determine accuracy.
+        adaptLocationAccuracy(for: lastMotionState)
+
+        // Re-ensure periodic timer is running
+        startPeriodicSaveTimer()
+
+        if isTracking {
+            print("📡 ensureBackgroundTracking — trip active, full tracking")
+        } else {
+            print("📡 ensureBackgroundTracking — idle, GPS keepalive + significant changes")
+        }
+    }
+
+    /// Self-healing: restart GPS if iOS silently stopped it.
+    /// Called from periodicSaveTick every 15s as a safety net.
+    private func ensureGPSAlive() {
+        // Check if last GPS fix is too old (> 2 minutes)
+        let lastGPSAge = Date().timeIntervalSince1970 - (UserDefaults.standard.double(forKey: "tt_lastGPSTimestamp"))
+        if lastGPSAge > 120 { // 2 minutes without GPS fix
+            print("⚠️ GPS silent for \(Int(lastGPSAge))s — restarting")
+            locationManager.startUpdatingLocation()
+            locationManager.startMonitoringSignificantLocationChanges()
+        }
     }
 
     // MARK: - Terminated App Relaunch Handling
@@ -520,7 +558,7 @@ public class LocationTrackingService: NSObject {
 
     /// Persist the last GPS fix timestamp so we can detect staleness even
     /// after the app is killed and relaunched with no active trip.
-    private func persistLastGPSTimestamp() {
+    internal func persistLastGPSTimestamp() {
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
     }
 
@@ -827,6 +865,11 @@ public class LocationTrackingService: NSObject {
     }
 
     private func periodicSaveTick() {
+        // ── Self-healing: ensure GPS never stops ──
+        // If iOS silently stopped location updates, restart them.
+        // This is the safety net that prevents the app from dying in background.
+        ensureGPSAlive()
+
         let speed  = effectiveSpeed()
         let source = resolveSource(speed: speed)
         currentSource = source

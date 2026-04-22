@@ -148,6 +148,7 @@ public final class TripTrackerAPIService {
                 String url = item.getString("url");
                 JSONObject body = new JSONObject(item.getString("body"));
 
+                Log.d(TAG, "Retrying: " + url + " with body: " + body.toString());
                 boolean ok = post(url, body);
                 if (ok) {
                     toRemove.add(entry);
