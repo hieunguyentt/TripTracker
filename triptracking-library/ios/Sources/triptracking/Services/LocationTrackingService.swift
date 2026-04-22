@@ -262,11 +262,21 @@ public class LocationTrackingService: NSObject {
         case .still, .unknown:
             // Sensor handles positioning when still.
             // GPS stays alive at minimal power — just enough to keep app running.
-            locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
-            locationManager.distanceFilter  = 500.0
-            locationManager.startUpdatingLocation()  // ensure still running
-            print("📡 GPS MINIMAL — still/unknown → sensors active, GPS keepalive (3km/500m)")
-
+            if isTracking {
+                // Trip active — keep GPS running for auto-end detection
+                // but reduce accuracy to save battery while stationary
+                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+                locationManager.distanceFilter  = tt_saveDistanceVehicleM
+                locationManager.startUpdatingLocation()  // ensure still running
+                print("📡 GPS MINIMAL — still/unknown → sensors active, GPS keepalive (3km/500m)")
+            } else {
+                // No trip — STOP GPS entirely.
+                // GPS on a stationary device produces only drift (30-50m jumps)
+                // which wastes battery and triggers false geofence enter/exit.
+                // Significant location changes + visits still wake the app if needed.
+                locationManager.stopUpdatingLocation()
+                print("📡 GPS STOPPED — device is still, no trip (significant changes + visits still active)")
+            }
         case .walking, .running, .cycling:
             // GPS active for pedestrian movement
             locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
