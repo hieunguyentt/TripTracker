@@ -24,7 +24,7 @@ Pod::Spec.new do |s|
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'
 
-  s.libraries = 'sqlite3'
+  s.dependency 'SQLCipher', '>= 4.0.0'
 
   s.weak_frameworks = 'CarPlay'
 end
