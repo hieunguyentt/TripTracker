@@ -6,7 +6,7 @@ plugins {
 android {
     namespace 'com.carmd.triptracking'
     compileSdk 34
-1.0.37
+
     sourceSets {
         main {
             java.srcDirs = ['app/src/main/java']
