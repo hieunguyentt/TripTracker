@@ -566,7 +566,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// Start fake route immediately.
     @objc func startFakeRoute(_ call: CAPPluginCall) {
-        //FakeRouteSimulator.isEnabled = true
+        FakeRouteSimulator.isEnabled = true
         FakeRouteSimulator.shared.start()
         call.resolve(["started": true])
     }
