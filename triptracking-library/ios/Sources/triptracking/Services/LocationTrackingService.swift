@@ -124,8 +124,8 @@ public class LocationTrackingService: NSObject {
     }
 
     // GPS staleness window
-    private let gpsStaleSecs: Double = 3.0   // speed holds steady for 3s after last GPS fix
-    private let gpsDeadSecs:  Double = 10.0  // speed forced to 0 after 10s of GPS silence
+    private let gpsStaleSecs: Double = 30.0   // speed holds steady for 3s after last GPS fix
+    private let gpsDeadSecs:  Double = 300.0  // speed forced to 0 after 10s of GPS silence
 
     /// One-shot timer that fires exactly at gpsDeadSecs after the last GPS fix.
     /// Immediately starts the auto-end countdown without waiting for the periodic tick.
