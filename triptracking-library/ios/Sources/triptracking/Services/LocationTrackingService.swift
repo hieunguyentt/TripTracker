@@ -268,8 +268,8 @@ public class LocationTrackingService: NSObject {
             if isTracking {
                 // Trip active — keep GPS running for auto-end detection
                 // but reduce accuracy to save battery while stationary
-                locationManager.desiredAccuracy = kCLLocationAccuracyBest
-                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+                locationManager.distanceFilter  = 0.5
                 locationManager.startUpdatingLocation()  // ensure still running
                 print("📡 GPS MINIMAL — still/unknown → sensors active, GPS keepalive (3km/500m)")
             } else {
