@@ -95,6 +95,10 @@ public final class TripTrackerSDK {
         applyConfig(config)
         LogManager.shared.start()
 
+        // Activate AutoLauncher — ensures location relaunch is caught even if
+        // Capacitor plugin hasn't loaded yet. Must be activated before first use.
+        _ = TripTrackerAutoLauncher.shared
+
         // Restore API config from UserDefaults (in case app was killed + relaunched)
         restoreAPIConfigFromDefaults()
 
