@@ -74,10 +74,10 @@ public class LocationTrackingService: NSObject {
     private var stepCount: Int        = 0
 
     // MARK: - Location state
-    public var lastGPSLocation:      CLLocation?   // latest raw GPS fix
-    public var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
+    private var lastGPSLocation:      CLLocation?   // latest raw GPS fix
+    private var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
     public var lastKnownLocation:    CLLocation?   // best position available — exposed so UI can read it without creating a new CLLocationManager
-    public var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
+    private var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
     public private(set) var currentSource: TrackingSource = .sensors
 
     /// Convenience accessor for the fake-route injector in MainViewController.
@@ -107,7 +107,7 @@ public class LocationTrackingService: NSObject {
     private var lastStepTime:          Date   = .distantPast
 
     // MARK: - Speed / GPS staleness
-    public var lastGPSSpeed:      Float = 0.0
+    private var lastGPSSpeed:      Float = 0.0
     private var lastGPSUpdateTime: Date  = .distantPast
 
     /// Consecutive GPS fixes at vehicle speed. Must reach threshold before auto-start.
@@ -124,8 +124,8 @@ public class LocationTrackingService: NSObject {
     }
 
     // GPS staleness window
-    private let gpsStaleSecs: Double = 30.0   // speed holds steady for 3s after last GPS fix
-    private let gpsDeadSecs:  Double = 300.0  // speed forced to 0 after 10s of GPS silence
+    private let gpsStaleSecs: Double = 3.0   // speed holds steady for 3s after last GPS fix
+    private let gpsDeadSecs:  Double = 10.0  // speed forced to 0 after 10s of GPS silence
 
     /// One-shot timer that fires exactly at gpsDeadSecs after the last GPS fix.
     /// Immediately starts the auto-end countdown without waiting for the periodic tick.
@@ -265,8 +265,8 @@ public class LocationTrackingService: NSObject {
             if isTracking {
                 // Trip active — keep GPS running for auto-end detection
                 // but reduce accuracy to save battery while stationary
-                locationManager.desiredAccuracy = kCLLocationAccuracyBest
-                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+                locationManager.distanceFilter  = saveDistanceVehicleM
                 locationManager.startUpdatingLocation()  // ensure still running
                 print("📡 GPS MINIMAL — still/unknown → sensors active, GPS keepalive (3km/500m)")
             } else {
@@ -275,14 +275,11 @@ public class LocationTrackingService: NSObject {
                 // which wastes battery and triggers false geofence enter/exit.
                 // Significant location changes + visits still wake the app if needed.
                 locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                print("📡 GPS STOPPED — still/unknown → sensors only, significant changes active")
                 print("📡 GPS STOPPED — device is still, no trip (significant changes + visits still active)")
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian movement
-            locationManager.desiredAccuracy = kCLLocationAccuracyBest//kCLLocationAccuracyNearestTenMeters
+            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
             locationManager.startUpdatingLocation()
             print("📡 GPS ON → \(state.rawValue): accuracy=10m filter=10m")
@@ -1297,9 +1294,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         currentSource = source
 
         // Always calibrate sensor baseline when accuracy is good
-        // if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+        if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
             if lastSensorLocation == nil { lastSensorLocation = location }
-        // }
+        }
 
         print("📍 GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
@@ -1436,8 +1433,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             if speed < vehicleThreshold {
                 startAutoEndTimer()
             }
-        } else //if isDeparture 
-        {
+        } else if isDeparture {
             // User departed a location — check if we should auto-start
             if let loc = locationManager.location, Float(max(0, loc.speed)) >= vehicleThreshold {
                 autoStartTrip(reason: "Visit departure (speed \(String(format:"%.1f", loc.speed)) m/s)")
