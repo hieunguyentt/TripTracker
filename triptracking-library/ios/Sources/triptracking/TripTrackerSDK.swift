@@ -75,13 +75,15 @@ public final class TripTrackerSDK {
 
     // ── Initialize with defaults ──
     public static func initialize(launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
+        let status = CLLocationManager.authorizationStatus()
+        print("📍TripTracker Location auth status: \(status.rawValue)")
+        
         initialize(config: TripTrackerConfig(), launchOptions: launchOptions)
     }
 
     // ── Initialize with config ──
     public static func initialize(config: TripTrackerConfig,
                                   launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
-
         webServer?.stop()
         webServer = nil
 
@@ -92,6 +94,10 @@ public final class TripTrackerSDK {
 
         applyConfig(config)
         LogManager.shared.start()
+
+        // Activate AutoLauncher — ensures location relaunch is caught even if
+        // Capacitor plugin hasn't loaded yet. Must be activated before first use.
+        _ = TripTrackerAutoLauncher.shared
 
         // Restore API config from UserDefaults (in case app was killed + relaunched)
         restoreAPIConfigFromDefaults()
@@ -109,23 +115,36 @@ public final class TripTrackerSDK {
             LocationTrackingService.shared.handleSignificantLocationRelaunch()
         }
 
-        // if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
-        //     webServer = LocationWebServer(); webServer?.start()
-        // }
-
         NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
         // If permission not yet granted, request it and observe for changes
         if !hasLocationPermission {
-            print("⚠️ TripTracker Location permission not granted — requesting…")
+            print("⚠️ Location permission not granted — requesting…")
             permissionDelegate = LocationPermissionDelegate()
         } else {
-            print("✅ TripTracker Location permission already granted — tracking active")
+            print("✅ Location permission already granted — tracking active")
         }
 
         _initialized = true
-        print("✅ TripTracker TripTrackerSDK initialized")
+
+        // Web server — only start in foreground, not during background/location relaunch
+        var isBackground = false
+        if Thread.isMainThread {
+            isBackground = UIApplication.shared.applicationState == .background
+        } else {
+            DispatchQueue.main.sync {
+                isBackground = UIApplication.shared.applicationState == .background
+            }
+        }
+        if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
+            && !isLocationRelaunch
+            && !isBackground {
+            webServer = LocationWebServer()
+            webServer?.start()
+        } else if isLocationRelaunch || isBackground {
+            print("⏭️ WebServer skipped — background/location relaunch")
+        }
     }
 
     // ── Permission ──
@@ -138,7 +157,7 @@ public final class TripTrackerSDK {
     public static func onPermissionGranted() {
         LocationTrackingService.shared.startBackgroundTracking()
         permissionDelegate = nil  // no longer needed
-        print("✅ TripTracker Permission granted — tracking activated")
+        print("✅ Permission granted — tracking activated")
     }
 
     private static var permissionDelegate: LocationPermissionDelegate?
@@ -213,12 +232,25 @@ public final class TripTrackerSDK {
         apiConfig.apiAuthKey = ud.string(forKey: "tt_api_apiAuthKey") ?? ""
         apiConfig.apiAuthToken = ud.string(forKey: "tt_api_apiAuthToken") ?? ""
         TripTrackerAPIService.shared.config = apiConfig
-        print("📡 TripTracker API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL)")
+        print("📡 API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL)")
     }
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
-    public static func willTerminate() { DatabaseManager.shared.saveContext() }
+
+    public static func willTerminate() {
+        DatabaseManager.shared.saveContext()
+    
+        // Re-ensure background tracking survives termination
+        LocationTrackingService.shared.ensureBackgroundTracking()
+    
+        if LocationTrackingService.shared.isTracking {
+            print("⚠️ App terminating during active trip #\(LocationTrackingService.shared.currentTripId) — saving checkpoint")
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
+        }
+    
+        print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
+    }
 
     // ── Scene Configuration ──
     public static func sceneConfiguration(for session: UISceneSession) -> UISceneConfiguration {
@@ -249,7 +281,18 @@ public final class TripTrackerSDK {
     public static var lastKnownCoordinate: CLLocationCoordinate2D? { LocationTrackingService.shared.lastKnownCoordinate }
 
     // ── Web Monitor ──
-    public static func startWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); if webServer == nil { webServer = LocationWebServer() }; webServer?.start() }
+    public static func startWebMonitor() {
+         UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled"); 
+
+         webServer?.stop()
+        webServer = nil
+
+         // Delay để OS release port
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            webServer = LocationWebServer()
+            webServer?.start()
+        }
+    }
     public static func stopWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); webServer?.stop() }
 
     // ── Update vehicle_id at runtime ──
@@ -275,7 +318,7 @@ private class LocationPermissionDelegate: NSObject, CLLocationManagerDelegate {
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         if status == .authorizedAlways || status == .authorizedWhenInUse {
-            print("✅ TripTrackerLocation permission granted via delegate — auto-starting tracking")
+            print("✅ Location permission granted via delegate — auto-starting tracking")
             TripTrackerSDK.onPermissionGranted()
         }
     }

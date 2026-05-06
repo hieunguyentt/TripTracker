@@ -19,19 +19,19 @@ public class DatabaseManager {
     public func initializeDatabase() {
         let fileManager = FileManager.default
         guard let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            print("❌ TripTracker Cannot access documents directory")
+            print("❌ Cannot access documents directory")
             return
         }
         
         let dbPath = documentsPath.appendingPathComponent("trip_tracker.db").path
         
-        print("📁 TripTracker Database path: \(dbPath)")
+        print("📁 Database path: \(dbPath)")
         
         if sqlite3_open(dbPath, &db) == SQLITE_OK {
-            print("✅ TripTracker Database opened successfully")
+            print("✅ Database opened successfully")
             createTables()
         } else {
-            print("❌ TripTracker Unable to open database")
+            print("❌ Unable to open database")
         }
     }
     
@@ -84,7 +84,7 @@ public class DatabaseManager {
         executeSQL(createLocationsTable)
         executeSQL(createCacheTable)
         
-        print("✅ TripTracker Tables created successfully")
+        print("✅ Tables created successfully")
     }
     
     private func executeSQL(_ sql: String) {
@@ -95,11 +95,11 @@ public class DatabaseManager {
                 // Success
             } else {
                 let errorMessage = String(cString: sqlite3_errmsg(db))
-                print("❌ TripTracker SQL execution failed: \(errorMessage)")
+                print("❌ SQL execution failed: \(errorMessage)")
             }
         } else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
-            print("❌ TripTracker SQL preparation failed: \(errorMessage)")
+            print("❌ SQL preparation failed: \(errorMessage)")
         }
         
         sqlite3_finalize(statement)
@@ -118,7 +118,7 @@ public class DatabaseManager {
             
             if sqlite3_step(statement) == SQLITE_DONE {
                 let tripId = sqlite3_last_insert_rowid(db)
-                print("🎯 TripTracker Started new trip: ID=\(tripId)")
+                print("🎯 Started new trip: ID=\(tripId)")
                 sqlite3_finalize(statement)
                 return tripId
             }
@@ -146,7 +146,7 @@ public class DatabaseManager {
             sqlite3_bind_int64(statement, 5, id)
             
             if sqlite3_step(statement) == SQLITE_DONE {
-                print("🏁 TripTracker Ended trip: ID=\(id), Distance=\(distance)m")
+                print("🏁 Ended trip: ID=\(id), Distance=\(distance)m")
             }
         }
         
