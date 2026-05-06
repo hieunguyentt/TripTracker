@@ -1315,7 +1315,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             speed:     speed,
             bearing:   Float(location.course >= 0 ? location.course : 0),
             timestamp: Int64(now.timeIntervalSince1970 * 1000),
-            source:    .gps
+            source:    source.rawValue
         )
         
         if persistIfNew(pt, source: .gps, tripId: currentTripId) {
