@@ -91,7 +91,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc private func handleAppDidBecomeActive() {
         // End background task when back in foreground
         if TripTrackerSDK.isInitialized {
-            LocationTrackingService.shared.endBackgroundTask()
             LocationTrackingService.shared.startBackgroundTracking()
         }
     }
@@ -99,7 +98,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc private func handleAppDidEnterBackground() {
         if TripTrackerSDK.isInitialized {
             // Begin background task to protect API calls + DB writes
-            LocationTrackingService.shared.beginBackgroundTask()
             LocationTrackingService.shared.ensureBackgroundTracking()
         }
     }
