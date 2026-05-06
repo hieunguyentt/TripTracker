@@ -406,7 +406,7 @@ public class LocationTrackingService: NSObject {
         }
     }
 
-    func ensureBackgroundTracking() {
+    public func ensureBackgroundTracking() {
             if !isTracking { startBackgroundTracking() }
         }
 
