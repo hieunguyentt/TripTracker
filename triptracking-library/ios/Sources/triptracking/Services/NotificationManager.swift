@@ -61,7 +61,7 @@ public class NotificationManager: NSObject {
             if let error = error {
                 print("🔔 Failed to send trip-start notification: \(error)")
             } else {
-                print("🔔 Trip-start notification sent for trip #\(tripId)")
+                print("🔔 TripTrackerTrip-start notification sent for trip #\(tripId)")
             }
         }
     }
@@ -93,7 +93,7 @@ public class NotificationManager: NSObject {
             if let error = error {
                 print("🔔 Failed to send trip-end notification: \(error)")
             } else {
-                print("🔔 Trip-end notification sent for trip #\(tripId)")
+                print("🔔 TripTracker Trip-end notification sent for trip #\(tripId)")
             }
         }
     }

@@ -75,7 +75,7 @@ public final class TripTrackerAPIService {
               let data = try? Data(contentsOf: url),
               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
         pendingQueue = arr
-        print("📡 API queue loaded: \(arr.count) pending requests")
+        print("📡  TripTracker API queue loaded: \(arr.count) pending requests")
     }
 
     private func savePendingQueue() {
@@ -96,7 +96,7 @@ public final class TripTrackerAPIService {
         }
         queueLock.unlock()
         savePendingQueue()
-        print("📡 API queued (total: \(pendingQueue.count)) — will retry when online")
+        print("📡  TripTracker API queued (total: \(pendingQueue.count)) — will retry when online")
     }
 
     /// Flush all pending requests. Called when network becomes available.
@@ -108,7 +108,7 @@ public final class TripTrackerAPIService {
         guard !items.isEmpty else { return }
 
         isFlushing = true
-        print("📡 Flushing \(items.count) pending API requests…")
+        print("📡  TripTracker API flushing \(items.count) pending requests…")
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             var successCount = 0
@@ -133,7 +133,7 @@ public final class TripTrackerAPIService {
             self?.savePendingQueue()
             self?.isFlushing = false
             let remaining = self?.pendingQueue.count ?? 0
-            print("📡 Flush done: \(successCount) sent, \(remaining) remaining")
+            print("📡  TripTracker API flush done: \(successCount) sent, \(remaining) remaining")
         }
     }
 
@@ -151,7 +151,7 @@ public final class TripTrackerAPIService {
             let monitor = NWPathMonitor()
             monitor.pathUpdateHandler = { [weak self] path in
                 if path.status == .satisfied && (self?.pendingQueue.isEmpty == false) {
-                    print("📡 Network restored — flushing pending queue")
+                    print("📡  TripTracker API network restored — flushing pending queue")
                     self?.flushQueue()
                 }
             }
@@ -167,7 +167,7 @@ public final class TripTrackerAPIService {
     public func updateVehicleId(_ vehicleId: String) {
         config.vehicleId = vehicleId
         config.routeId = vehicleId
-        print("📡 API vehicle_id updated → \(vehicleId)")
+        print("📡  TripTracker API vehicle_id updated → \(vehicleId)")
     }
 
     // ── Called on trip start to start including vehicle_id ──
@@ -185,7 +185,7 @@ public final class TripTrackerAPIService {
         if(isEnabled) {
             print("📡 TripTracker Sending ping for location: \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }else{
-            print("📡 Ping NOT sent because API config is incomplete")
+            print("📡 TripTracker Ping NOT sent because API config is incomplete")
         }
         var body: [String: Any] = [
             "user_Id": config.userId,
@@ -201,14 +201,14 @@ public final class TripTrackerAPIService {
                 
             ]]
         ]
-        print("API ping route: \(body) (vehicleId included: \(includeVehicleId))")
+        print("📡  TripTracker API ping route: \(body) (vehicleId included: \(includeVehicleId))")
         
         // Only include vehicle_Id during active trip and if configured
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
-        postWithRetry(url: config.pingURL, body: body) { ok in
-            print("📡 API ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
+        post(url: config.pingURL, body: body) { ok in
+            print("📡 TripTrackerAPI ping \(ok ? "OK" : "FAIL"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }
     }
 
@@ -226,13 +226,13 @@ public final class TripTrackerAPIService {
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
              "speed": spd, "activityType": activity, "route_Id": includeVehicleId ? routeId ?? config.vehicleId : ""]
         }
-        print("API ping route: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId))")
+        print("📡  TripTracker API ping route: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId))")
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
-        postWithRetry(url: config.pingURL, body: body) { ok in
-            print("📡 API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
+        post(url: config.pingURL, body: body) { ok in
+            print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "FAIL")")
         }
     }
 
@@ -241,7 +241,7 @@ public final class TripTrackerAPIService {
         if(isEnabled) {
             print("📡 TripTracker Sending trip end for location: \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }else{
-            print("📡 Trip end NOT sent because API config is incomplete")
+            print("📡 TripTracker Trip end NOT sent because API config is incomplete")
         }
         let body: [String: Any] = [
             "user_Id": config.userId,
@@ -249,9 +249,15 @@ public final class TripTrackerAPIService {
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude
         ]
-        postWithRetry(url: config.endURL, body: body) { [weak self] ok in
-            print("📡 API trip-end \(ok ? "OK" : "QUEUED")")
+        post(url: config.endURL, body: body) { [weak self] ok in
+            print("📡 TripTracker API trip-end \(ok ? "OK" : "FAIL")")
+            // Stop including vehicle_id after trip end
             self?.includeVehicleId = false
+            if !ok {
+                DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                    self?.post(url: self?.config.endURL ?? "", body: body, completion: nil)
+                }
+            }
         }
     }
 
