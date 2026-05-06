@@ -276,9 +276,6 @@ public class LocationTrackingService: NSObject {
                 // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 30.0
-                locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
