@@ -172,6 +172,9 @@ public class LocationTrackingService: NSObject {
     /// Timer that fires when speed has been 0 for autoEndStillnessSecs.
     private var autoEndTimer: Timer?
 
+    /// Timer that turn on location service
+    private var autoEnsureServiceTimer: Timer?
+
     /// Timestamp when the speed last dropped to 0 (for countdown UI).
     private(set) var stillSinceDate: Date?
 
@@ -273,9 +276,7 @@ public class LocationTrackingService: NSObject {
                 // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 30.0
-                locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
+                turnOnServiceInTime(seconds: 30.0)
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
@@ -406,6 +407,19 @@ public class LocationTrackingService: NSObject {
                     self?.startAutoEndTimer()
                 }
             }
+        }
+    }
+
+    public func turnOnServiceInTime(seconds: TimeInterval) {
+        if autoEnsureServiceTimer != nil { return }
+        autoEnsureServiceTimer?.invalidate()
+        autoEnsureServiceTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
+            self?.ensureBackgroundTracking()
+        }
+
+        // Ensure timer fires even when the run loop is tracking scroll events
+        if let timer = autoEnsureServiceTimer {
+            RunLoop.main.add(timer, forMode: .common)
         }
     }
 
@@ -766,6 +780,7 @@ public class LocationTrackingService: NSObject {
 
         if shouldSaveLocation(speed: Float(location.speed)) {
             let pt = LocationPoint(from: location, source: .sensors)
+            pt.speed = speed  // use effectiveSpeed(), not raw CLLocation.speed 
             if persistIfNew(pt, source: .sensors, tripId: currentTripId) {
                 delegate?.didUpdateLocation(pt, source: .sensors, totalDistance: totalDistance)
             }
@@ -1292,6 +1307,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         VoiceFeedbackManager.shared.checkDistanceMilestone(totalDistance: totalDistance)
 
         let pt = LocationPoint(from: location, source: .gps)
+        pt.speed = speed  // use effectiveSpeed(), not raw CLLocation.speed 
         if persistIfNew(pt, source: .gps, tripId: currentTripId) {
             delegate?.didUpdateLocation(pt, source: .gps, totalDistance: totalDistance)
         }
