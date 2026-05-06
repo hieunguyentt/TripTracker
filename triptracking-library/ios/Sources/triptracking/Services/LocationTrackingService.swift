@@ -271,8 +271,11 @@ public class LocationTrackingService: NSObject {
                 // NO TRIP: Keep GPS alive at MINIMAL power to prevent iOS from killing the app.
                 // If we stop GPS → iOS terminates → only wakes on ~500m significant change.
                 // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
-                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 30.0
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
@@ -482,6 +485,7 @@ public class LocationTrackingService: NSObject {
         // Send a ping on every significant location change (even without trip)
         let pt = LocationPoint(from: location, source: .gps)
         sendAPIPing(location: pt, source: .gps)
+        print("📍 TripTracker handleSignificantLocationRelaunch — speed: \(String(format:"%.1f", pt.speed)) m/s")
 
         // Save to cache database
         DatabaseManager.shared.saveCachedLocation(location: pt)
@@ -671,6 +675,7 @@ public class LocationTrackingService: NSObject {
         }
         // API: ping on EVERY save (trip AND no trip)
         sendAPIPing(location: pt, source: source)
+        print("📍 TripTracker onMotionStateChanged — speed: \(String(format:"%.1f", pt.speed)) m/s")
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
         print("📍 TripTracker Motion-change save: \(prev.rawValue)→\(next.rawValue) src=\(source.rawValue) spd=\(String(format:"%.1f", speed))m/s")
@@ -860,6 +865,7 @@ public class LocationTrackingService: NSObject {
         }
         // API: ping on EVERY save (trip AND no trip)
         sendAPIPing(location: pt, source: source)
+        print("📍 TripTracker periodicSaveTick — speed: \(String(format:"%.1f", pt.speed)) m/s")
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
         lastKnownLocation = base
@@ -1098,6 +1104,7 @@ public class LocationTrackingService: NSObject {
         }
         // API: ping on EVERY save (trip AND no trip)
         sendAPIPing(location: location, source: source)
+        print("📍 TripTracker persistIfNew — speed: \(String(format:"%.1f", location.speed)) m/s")
         return true
     }
 
@@ -1342,6 +1349,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         if let loc = locationManager.location {
             let pt = LocationPoint(from: loc, source: .gps)
             sendAPIPing(location: pt, source: .gps)
+            print("📍 TripTracker locationManager — speed: \(String(format:"%.1f", pt.speed)) m/s")
             DatabaseManager.shared.saveCachedLocation(location: pt)
             lastKnownLocation = loc
             persistLastGPSTimestamp()
