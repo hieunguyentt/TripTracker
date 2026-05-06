@@ -173,7 +173,7 @@ public class LocationTrackingService: NSObject {
     private var autoEndTimer: Timer?
 
     /// Timestamp when the speed last dropped to 0 (for countdown UI).
-    public private(set) var stillSinceDate: Date?
+    private(set) var stillSinceDate: Date?
 
     /// Delegate for auto-trip lifecycle events so the UI can react.
     weak var autoTripDelegate: AutoTripDelegate?
@@ -495,7 +495,7 @@ public class LocationTrackingService: NSObject {
 
     /// Persist the last GPS fix timestamp so we can detect staleness even
     /// after the app is killed and relaunched with no active trip.
-    internal func persistLastGPSTimestamp() {
+    private func persistLastGPSTimestamp() {
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
     }
 
