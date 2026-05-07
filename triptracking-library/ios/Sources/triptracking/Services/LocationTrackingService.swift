@@ -269,6 +269,7 @@ public class LocationTrackingService: NSObject {
                 // → miss all driving when user resumes.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 10.0
+                locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
             } else {
                 // NO TRIP: Keep GPS alive at MINIMAL power to prevent iOS from killing the app.
@@ -276,6 +277,7 @@ public class LocationTrackingService: NSObject {
                 // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 10.0
+                locationManager.stopUpdatingLocation()
                 turnOnServiceInTime(seconds: 30.0)
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
@@ -283,12 +285,14 @@ public class LocationTrackingService: NSObject {
             // GPS active for pedestrian movement
             locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
+            locationManager.startUpdatingLocation()
             print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m")
 
         case .automotive:
             // Best accuracy for driving
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter  = kCLDistanceFilterNone
+            locationManager.startUpdatingLocation()
             print("📡 TripTracker GPS ON → automotive: accuracy=Best filter=none")
         }
     }
