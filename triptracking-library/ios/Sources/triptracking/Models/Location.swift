@@ -47,7 +47,7 @@ public struct LocationPoint {
         self.longitude = clLocation.coordinate.longitude
         self.altitude = clLocation.altitude
         self.accuracy = Float(clLocation.horizontalAccuracy)
-        self.speed = Float(clLocation.speed)
+        self.speed = Float(max(0, clLocation.speed))  // CLLocation.speed = -1 when invalid
         self.bearing = Float(clLocation.course)
         self.timestamp = Int64(clLocation.timestamp.timeIntervalSince1970 * 1000)
         self.source = source.rawValue

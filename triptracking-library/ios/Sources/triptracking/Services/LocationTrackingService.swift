@@ -267,28 +267,36 @@ public class LocationTrackingService: NSObject {
                 // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
                 // → miss all driving when user resumes.
-                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10.0
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.distanceFilter  = 50.0
+                locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
             } else {
-                // NO TRIP: Keep GPS alive at MINIMAL power to prevent iOS from killing the app.
-                // If we stop GPS → iOS terminates → only wakes on ~500m significant change.
-                // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
-                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10.0
-
-                print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
+                // NO TRIP + STILL: Stop GPS to save battery. No blue arrow.
+                // Significant location changes (~500m) + visits will relaunch app if user moves.
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                print("📡 TripTracker GPS STOPPED — still/no trip (significant changes + visits will relaunch)")
             }
         case .walking, .running, .cycling:
-            // GPS active for pedestrian movement
+            // GPS active for pedestrian/cycling movement.
+            // MUST keep GPS alive — this prevents iOS from terminating the app.
+            // If terminated, significant changes + visits will relaunch.
             locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
-            print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m")
+            locationManager.startUpdatingLocation()
+            locationManager.startMonitoringSignificantLocationChanges()
+            locationManager.startMonitoringVisits()
+            print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m (survives termination)")
 
         case .automotive:
-            // Best accuracy for driving
+            // Best accuracy for driving — GPS always alive
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter  = kCLDistanceFilterNone
+            locationManager.startUpdatingLocation()
+            locationManager.startMonitoringSignificantLocationChanges()
+            locationManager.startMonitoringVisits()
             print("📡 TripTracker GPS ON → automotive: accuracy=Best filter=none")
         }
     }
@@ -1418,6 +1426,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     /// Send location ping to server during active trip.
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
+        // Clamp speed — CLLocation.speed can be -1 when invalid
+        let safeSpeed = max(0, speed)
         let activityType: String
         switch lastMotionState {
             case .still, .unknown:    activityType = "still"
@@ -1428,9 +1438,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         }
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
-            isMoving: speed > 0 ? true : false,
-            speed: speed,
-            activityType: speed > 0 ? (activityType != "still" ? activityType : "in_vehicle") : "still",
+            isMoving: safeSpeed > 0 ? true : false,
+            speed: safeSpeed,
+            activityType: safeSpeed > 0 ? (activityType != "still" ? activityType : "in_vehicle") : "still",
         )
     }
 }
