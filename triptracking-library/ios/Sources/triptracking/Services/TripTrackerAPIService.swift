@@ -187,6 +187,13 @@ public final class TripTrackerAPIService {
         }else{
             print("📡 TripTracker Ping NOT sent because API config is incomplete")
         }
+
+        if(config.userId.isEmpty || config.userId == nil){
+            
+            print("⚠️ TripTracker API config missing userId — ping not sent")
+            return
+        }
+
         var body: [String: Any] = [
             "user_Id": config.userId,
             "os_Info": config.osInfo,
@@ -207,8 +214,8 @@ public final class TripTrackerAPIService {
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
-        postWithRetry(url: config.pingURL, body: body) { ok in
-            print("📡 API ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
+        post(url: config.pingURL, body: body) { ok in
+            print("📡 TripTrackerAPI ping \(ok ? "OK" : "FAIL"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }
     }
 
@@ -231,8 +238,8 @@ public final class TripTrackerAPIService {
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
-        postWithRetry(url: config.pingURL, body: body) { ok in
-            print("📡 API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
+        post(url: config.pingURL, body: body) { ok in
+            print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "FAIL")")
         }
     }
 
@@ -249,9 +256,15 @@ public final class TripTrackerAPIService {
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude
         ]
-        postWithRetry(url: config.endURL, body: body) { [weak self] ok in
-            print("📡 API trip-end \(ok ? "OK" : "QUEUED")")
+        post(url: config.endURL, body: body) { [weak self] ok in
+            print("📡 TripTracker API trip-end \(ok ? "OK" : "FAIL")")
+            // Stop including vehicle_id after trip end
             self?.includeVehicleId = false
+            if !ok {
+                DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                    self?.post(url: self?.config.endURL ?? "", body: body, completion: nil)
+                }
+            }
         }
     }
 
