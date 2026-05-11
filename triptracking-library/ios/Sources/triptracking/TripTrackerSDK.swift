@@ -218,7 +218,22 @@ public final class TripTrackerSDK {
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
-    public static func willTerminate() { DatabaseManager.shared.saveContext() }
+    public static func willTerminate() {
+        // Save database checkpoint
+        DatabaseManager.shared.saveContext()
+
+        // Re-register significant location changes + visits so iOS knows
+        // to relaunch us after termination. Without this, the app won't
+        // wake up for location events.
+        let svc = LocationTrackingService.shared
+        svc.locationManager.startMonitoringSignificantLocationChanges()
+        svc.locationManager.startMonitoringVisits()
+
+        // Persist last GPS timestamp for stale-trip detection on relaunch
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
+
+        print("🛑 TripTracker willTerminate — DB saved, significant changes + visits re-registered")
+    }
 
     // ── Scene Configuration ──
     public static func sceneConfiguration(for session: UISceneSession) -> UISceneConfiguration {
