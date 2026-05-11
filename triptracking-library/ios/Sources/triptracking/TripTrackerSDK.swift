@@ -184,20 +184,16 @@ public final class TripTrackerSDK {
         apiConfig.apiAuthToken = config.apiAuthToken
         TripTrackerAPIService.shared.config = apiConfig
 
-        if !config.pingURL.isEmpty && !config.userId.isEmpty {
-            ud.set(config.pingURL, forKey: "tt_api_pingURL")
-            ud.set(config.endURL, forKey: "tt_api_endURL")
-            ud.set(config.userId, forKey: "tt_api_userId")
-            ud.set(config.vehicleId, forKey: "tt_api_vehicleId")
-            ud.set(config.osInfo, forKey: "tt_api_osInfo")
-            ud.set(apiConfig.routeId, forKey: "tt_api_routeId")
-            ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
-            ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
-            ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
-            print("📡 API config saved to UserDefaults — userId=\(config.userId)")
-        } else {
-            print("📡 API config NOT saved — empty config (will restore from UserDefaults)")
-        }
+        ud.set(config.pingURL, forKey: "tt_api_pingURL")
+        ud.set(config.endURL, forKey: "tt_api_endURL")
+        ud.set(config.userId, forKey: "tt_api_userId")
+        ud.set(config.vehicleId, forKey: "tt_api_vehicleId")
+        ud.set(config.osInfo, forKey: "tt_api_osInfo")
+        ud.set(apiConfig.routeId, forKey: "tt_api_routeId")
+        ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
+        ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
+        ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
+        print("📡 API config saved to UserDefaults — userId=\(config.userId)")
 
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
     }
