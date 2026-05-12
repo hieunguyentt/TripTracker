@@ -108,6 +108,7 @@ public final class TripTrackerAPIService {
     }
 
     /// Flush all pending requests. Called when network becomes available.
+    /// Flush all pending requests. Called when network becomes available.
     public func flushQueue() {
         guard !isFlushing else { return }
         queueLock.lock()
@@ -115,33 +116,66 @@ public final class TripTrackerAPIService {
         queueLock.unlock()
         guard !items.isEmpty else { return }
 
+        // Don't flush if API config isn't ready yet (AutoLauncher relaunch,
+        // Capacitor hasn't loaded with real config)
+        guard !config.pingURL.isEmpty else {
+            print("📡  TripTracker API flush skipped — config.pingURL is empty (waiting for Capacitor)")
+            return
+        }
+
         isFlushing = true
         print("📡  TripTracker API flushing \(items.count) pending requests…")
 
+        // Use a dedicated URLSession to avoid stale DNS cache from shared session
+        let flushConfig = URLSessionConfiguration.default
+        flushConfig.timeoutIntervalForRequest = 15
+        flushConfig.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let flushSession = URLSession(configuration: flushConfig)
+
         DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
             var successCount = 0
+            var consecutiveFailures = 0
+
             for item in items {
-                guard let urlStr = item["url"] as? String,
+                // Recover URL: use stored URL if valid, otherwise fall back to current config
+                var urlStr = item["url"] as? String ?? ""
+                if urlStr.isEmpty || URL(string: urlStr) == nil {
+                    urlStr = self.config.pingURL
+                }
+                guard !urlStr.isEmpty, URL(string: urlStr) != nil,
                       let body = item["body"] as? [String: Any] else { continue }
 
-                let ok = self?.postSync(url: urlStr, body: body) ?? false
+                let ok = self.postSyncWith(session: flushSession, url: urlStr, body: body)
                 if ok {
                     successCount += 1
-                    // Remove from queue
-                    self?.queueLock.lock()
-                    if let idx = self?.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
-                        self?.pendingQueue.remove(at: idx)
+                    consecutiveFailures = 0
+                    self.queueLock.lock()
+                    if let idx = self.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
+                        self.pendingQueue.remove(at: idx)
                     }
-                    self?.queueLock.unlock()
+                    self.queueLock.unlock()
                 } else {
-                    // Still offline — stop flushing
-                    break
+                    consecutiveFailures += 1
+                    if consecutiveFailures >= 3 {
+                        print("📡  TripTracker API flush: 3 consecutive failures — stopping")
+                        break
+                    }
+                    Thread.sleep(forTimeInterval: 1.0)
                 }
             }
-            self?.savePendingQueue()
-            self?.isFlushing = false
-            let remaining = self?.pendingQueue.count ?? 0
+            self.savePendingQueue()
+            self.isFlushing = false
+            flushSession.invalidateAndCancel()
+            let remaining = self.pendingQueue.count
             print("📡  TripTracker API flush done: \(successCount) sent, \(remaining) remaining")
+
+            // If partially flushed, schedule another round
+            if remaining > 0 && successCount > 0 {
+                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                    self?.flushQueue()
+                }
+            }
         }
     }
 
@@ -159,8 +193,12 @@ public final class TripTrackerAPIService {
             let monitor = NWPathMonitor()
             monitor.pathUpdateHandler = { [weak self] path in
                 if path.status == .satisfied && (self?.pendingQueue.isEmpty == false) {
-                    print("📡  TripTracker API network restored — flushing pending queue")
-                    self?.flushQueue()
+                    print("📡  TripTracker API network restored — will flush in 3s")
+                    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                        guard self?.pendingQueue.isEmpty == false else { return }
+                        print("📡  TripTracker API flushing pending queue")
+                        self?.flushQueue()
+                    }
                 }
             }
             monitor.start(queue: DispatchQueue.global(qos: .utility))
@@ -310,22 +348,37 @@ public final class TripTrackerAPIService {
 
     /// Synchronous POST — used by flush queue on background thread
     private func postSync(url urlStr: String, body: [String: Any]) -> Bool {
-        print("📡 TripTracker Synchronous POST to \(urlStr)")   
-        guard let url = URL(string: urlStr) else { return false }
+        return postSyncWith(session: session, url: urlStr, body: body)
+    }
+
+    /// Synchronous POST with a specific URLSession — avoids stale DNS cache
+    private func postSyncWith(session: URLSession, url urlStr: String, body: [String: Any]) -> Bool {
+        print("📡 TripTracker postSyncWith to \(urlStr)")
+        guard let url = URL(string: urlStr) else {
+            print("📡 TripTracker postSyncWith FAILED — invalid URL: '\(urlStr)'")
+            return false
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.cachePolicy = .reloadIgnoringLocalCacheData
         if !config.authorizationKey.isEmpty { req.setValue(config.authorizationKey, forHTTPHeaderField: "AuthorizationKey") }
         if !config.apiAuthKey.isEmpty { req.setValue(config.apiAuthKey, forHTTPHeaderField: "api-auth-key") }
         if !config.apiAuthToken.isEmpty { req.setValue(config.apiAuthToken, forHTTPHeaderField: "api-auth-token") }
-        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else { return false }
+        guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else {
+            print("📡 TripTracker postSyncWith FAILED — body not serializable")
+            return false
+        }
         req.httpBody = httpBody
 
         let sem = DispatchSemaphore(value: 0)
         var success = false
-        session.dataTask(with: req) { _, response, _ in
+        session.dataTask(with: req) { _, response, error in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             success = (200...299).contains(code)
+            if !success {
+                print("📡 TripTracker postSyncWith FAILED — code=\(code) error=\(error?.localizedDescription ?? "none")")
+            }
             sem.signal()
         }.resume()
         sem.wait()
