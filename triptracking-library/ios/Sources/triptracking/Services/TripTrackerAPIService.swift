@@ -41,6 +41,14 @@ public final class TripTrackerAPIService {
     private init() {
         loadPendingQueue()
         startNetworkMonitor()
+
+        // Attempt flush on startup — covers case where app was killed offline,
+        // then relaunched with network available
+        if !pendingQueue.isEmpty {
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.flushQueue()
+            }
+        }
     }
 
     public var config = TripTrackerAPIConfig()
@@ -189,7 +197,7 @@ public final class TripTrackerAPIService {
         }
 
         if(config.userId.isEmpty || config.userId == nil){
-            
+
             print("⚠️ TripTracker API config missing userId — ping not sent")
             return
         }
@@ -214,8 +222,8 @@ public final class TripTrackerAPIService {
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
-        post(url: config.pingURL, body: body) { ok in
-            print("📡 TripTrackerAPI ping \(ok ? "OK" : "FAIL"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
+        postWithRetry(url: config.pingURL, body: body) { ok in
+            print("📡 TripTrackerAPI ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }
     }
 
@@ -238,8 +246,8 @@ public final class TripTrackerAPIService {
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
-        post(url: config.pingURL, body: body) { ok in
-            print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "FAIL")")
+        postWithRetry(url: config.pingURL, body: body) { ok in
+            print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
         }
     }
 
@@ -250,21 +258,20 @@ public final class TripTrackerAPIService {
         }else{
             print("📡 TripTracker Trip end NOT sent because API config is incomplete")
         }
+        if(location.coordinate.latitude == 0 && location.coordinate.longitude == 0){
+            print("⚠️ TripTracker Invalid location (0,0) — trip end not sent")
+            return
+        }
         let body: [String: Any] = [
             "user_Id": config.userId,
             "timestamp": ISO8601DateFormatter().string(from: Date()),
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude
         ]
-        post(url: config.endURL, body: body) { [weak self] ok in
-            print("📡 TripTracker API trip-end \(ok ? "OK" : "FAIL")")
+        postWithRetry(url: config.endURL, body: body) { [weak self] ok in
+            print("📡 TripTracker API trip-end \(ok ? "OK" : "QUEUED")")
             // Stop including vehicle_id after trip end
             self?.includeVehicleId = false
-            if !ok {
-                DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                    self?.post(url: self?.config.endURL ?? "", body: body, completion: nil)
-                }
-            }
         }
     }
 
