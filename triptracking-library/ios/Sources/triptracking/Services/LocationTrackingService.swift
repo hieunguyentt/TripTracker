@@ -1022,14 +1022,13 @@ public class LocationTrackingService: NSObject {
     /// Schedule a one-shot timer that fires exactly gpsDeadSecs (10s) after the
     /// last GPS fix. When it fires, effectiveSpeed() == 0 → start auto-end immediately.
     /// Each new GPS fix resets this timer.
-    private func scheduleGPSSilenceTimer(locations: CLLocation) {
+    private func scheduleGPSSilenceTimer() {
         gpsSilenceTimer?.invalidate()
         gpsSilenceTimer = Timer.scheduledTimer(withTimeInterval: gpsDeadSecs, repeats: false) { [weak self] _ in
             guard let self = self, self.isTracking else { return }
             let speed = self.effectiveSpeed()
             if speed < self.vehicleThreshold {
                 print("⏱️ TripTracker GPS silent \(Int(self.gpsDeadSecs))s → speed=\(String(format:"%.1f", speed)) → starting auto-end timer")
-                sendAPIPing(location: locations, source: .gps, speed: speed)
                 self.startAutoEndTimer()
             }
         }
@@ -1298,7 +1297,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // ── GPS silence timer: fire exactly gpsDeadSecs after this fix ──
         // If no new GPS fix arrives within 10s, speed will be 0 and we
         // immediately start the auto-end countdown — no waiting for periodic tick.
-        scheduleGPSSilenceTimer(locations)
+        scheduleGPSSilenceTimer()
 
         // ── Geofence: check enter/exit on every GPS fix ──
         GeofenceManager.shared.checkLocation(location)
@@ -1322,6 +1321,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             timestamp: Int64(now.timeIntervalSince1970 * 1000),
             source:    source.rawValue
         )
+        sendAPIPing(location: livePt, source: source.rawValue, speed: speed)
         delegate?.didUpdateLocation(livePt, source: source, totalDistance: totalDistance)
 
         if let start = tripStartTime {
