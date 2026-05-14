@@ -3,7 +3,12 @@ name: Build & Release AAR
 on:
   push:
     tags:
-      - '*'  # Matches: 1.0.41, 1.0.42, v1.0.42, etc.
+      - '**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. 1.0.42)'
+        required: true
 
 jobs:
   build-and-release:
@@ -19,23 +24,20 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-
       - name: Build AAR
         run: |
           cd triptracking-library/android
           chmod +x ../gradlew
           ../gradlew :app:assembleRelease
 
-      - name: Get version from tag
+      - name: Get version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Rename AAR
         run: |
@@ -45,6 +47,7 @@ jobs:
       - name: Create GitHub Release & attach AAR
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
           files: triptracking-android-${{ steps.version.outputs.VERSION }}.aar
           generate_release_notes: true
         env:
