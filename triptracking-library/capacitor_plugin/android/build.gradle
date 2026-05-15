@@ -43,14 +43,17 @@ android {
 repositories {
     google()
     mavenCentral()
-    maven {
-        url = uri("https://maven.pkg.github.com/hieunguyentt/TripTracker")
-        credentials {
-            username = project.findProperty("GITHUB_ACTOR") ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("GITHUB_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+    ivy {
+        url "https://github.com/hieunguyentt/TripTracker/releases/download"
+        patternLayout {
+            artifact "/[revision]/[artifact]-[revision].[ext]"
         }
+        metadataSources { artifact() }
     }
 }
+
+def packageJson = new groovy.json.JsonSlurper().parse(file("../../package.json"))
+def libVersion = packageJson.version
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
@@ -60,5 +63,5 @@ dependencies {
     implementation 'com.google.android.gms:play-services-maps:18.2.0'
     implementation 'androidx.core:core:1.12.0'
     // TripTracking library
-    implementation 'com.carmd.triptracking:triptracking-android:1.0.42@aar'
+    implementation "com.carmd.triptracking:triptracking-android:${libVersion}@aar"
 }
