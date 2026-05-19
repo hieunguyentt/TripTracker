@@ -135,16 +135,26 @@ public final class TripTrackerSDK {
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_EXIT, config.notifyGeofenceExit);
         ed.putInt("transport_type", config.transportType);
 
-        // Persist API config — survives app kill + service restart
-        ed.putString("api_pingURL", config.pingURL != null ? config.pingURL : "");
-        ed.putString("api_endURL", config.endURL != null ? config.endURL : "");
-        ed.putString("api_userId", config.userId != null ? config.userId : "");
-        ed.putString("api_vehicleId", config.vehicleId != null ? config.vehicleId : "");
-        ed.putString("api_osInfo", config.osInfo != null ? config.osInfo : "");
-        ed.putString("api_routeId", config.routeId != null ? config.routeId : "");
-        ed.putString("api_authorizationKey", config.authorizationKey != null ? config.authorizationKey : "");
-        ed.putString("api_apiAuthKey", config.apiAuthKey != null ? config.apiAuthKey : "");
-        ed.putString("api_apiAuthToken", config.apiAuthToken != null ? config.apiAuthToken : "");
+        // Persist API config — only if incoming config has real values.
+        // When BootReceiver/service restarts with new Config() (empty defaults),
+        // we must NOT overwrite the previously saved config from Capacitor.
+        boolean hasApiConfig = config.pingURL != null && !config.pingURL.isEmpty()
+                && config.userId != null && !config.userId.isEmpty();
+
+        if (hasApiConfig) {
+            ed.putString("api_pingURL", config.pingURL);
+            ed.putString("api_endURL", config.endURL != null ? config.endURL : "");
+            ed.putString("api_userId", config.userId);
+            ed.putString("api_vehicleId", config.vehicleId != null ? config.vehicleId : "");
+            ed.putString("api_osInfo", config.osInfo != null ? config.osInfo : "");
+            ed.putString("api_routeId", config.routeId != null ? config.routeId : "");
+            ed.putString("api_authorizationKey", config.authorizationKey != null ? config.authorizationKey : "");
+            ed.putString("api_apiAuthKey", config.apiAuthKey != null ? config.apiAuthKey : "");
+            ed.putString("api_apiAuthToken", config.apiAuthToken != null ? config.apiAuthToken : "");
+            Log.i("TripTrackerSDK", "📡 API config saved — userId=" + config.userId);
+        } else {
+            Log.i("TripTrackerSDK", "📡 API config NOT overwritten — incoming config is empty (preserved from SharedPreferences)");
+        }
         ed.apply();
 
         GeofenceManager.setEnabled(ctx, config.geofenceEnabled);
@@ -154,10 +164,29 @@ public final class TripTrackerSDK {
 
         // API — set context for queue persistence + network monitoring
         TripTrackerAPIService.getInstance().setContext(ctx);
-        TripTrackerAPIService.getInstance().configure(
-                config.pingURL, config.endURL, config.userId, config.vehicleId,
-                config.osInfo, config.routeId, config.authorizationKey,
-                config.apiAuthKey, config.apiAuthToken);
+        if (hasApiConfig) {
+            TripTrackerAPIService.getInstance().configure(
+                    config.pingURL, config.endURL, config.userId, config.vehicleId,
+                    config.osInfo, config.routeId, config.authorizationKey,
+                    config.apiAuthKey, config.apiAuthToken);
+        } else {
+            // Restore API config from SharedPreferences (saved by a previous Capacitor session)
+            SharedPreferences sp = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE);
+            String savedPing = sp.getString("api_pingURL", "");
+            String savedEnd = sp.getString("api_endURL", "");
+            String savedUser = sp.getString("api_userId", "");
+            if (!savedPing.isEmpty() && !savedUser.isEmpty()) {
+                TripTrackerAPIService.getInstance().configure(
+                        savedPing, savedEnd, savedUser,
+                        sp.getString("api_vehicleId", ""),
+                        sp.getString("api_osInfo", ""),
+                        sp.getString("api_routeId", ""),
+                        sp.getString("api_authorizationKey", ""),
+                        sp.getString("api_apiAuthKey", ""),
+                        sp.getString("api_apiAuthToken", ""));
+                Log.i("TripTrackerSDK", "📡 API config restored from SharedPreferences — userId=" + savedUser);
+            }
+        }
     }
 
     public static boolean isInitialized() { return initialized; }

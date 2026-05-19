@@ -250,8 +250,17 @@ public class LocationTrackingService extends Service implements
         // Seed sensor tracker with best available cached location
         startSensorTracking();
 
-        // GPS runs continuously: calibration + vehicle-speed detection
-        startGPSTracking();
+        // GPS: only start if restoring an active trip.
+        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for confirmation.
+        // This saves significant battery when device is idle (desk, pocket, table).
+        if (isTracking) {
+            startGPSTracking();
+            Log.d(TAG, "📡 GPS started — restoring active trip");
+        } else {
+            // Get one initial fix for sensor seeding, then stop GPS
+            requestSingleLocationFix();
+            Log.d(TAG, "🔋 GPS not started — waiting for Activity Recognition (no active trip)");
+        }
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -623,11 +632,27 @@ public class LocationTrackingService extends Service implements
             currentTripId = -1;
         }
 
-        // Do NOT stop sensor tracker — keep it alive for auto-trip detection.
-        // Do NOT removeUpdates on GPS — keep it alive so auto-start works.
+        // Keep sensor tracker alive for motion detection (low power: ~1-2%/hr)
+        // BUT stop GPS to save battery — Activity Recognition will detect IN_VEHICLE
+        // and re-enable GPS for speed confirmation.
+        stopGpsUpdates();
         cancelWatchdog();
         startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
         notifyTrackingStateChanged(false);
+    }
+
+    // =========================================================================
+    //  GPS power management — stop/start GPS independently of trip state
+    // =========================================================================
+
+    /** Stop GPS updates to save battery. Sensor tracker + Activity Recognition stay alive. */
+    private void stopGpsUpdates() {
+        try {
+            locationManager.removeUpdates(this);
+            Log.d(TAG, "🔋 GPS stopped — saving battery (Activity Recognition still active)");
+        } catch (Exception e) {
+            Log.e(TAG, "stopGpsUpdates error: " + e.getMessage());
+        }
     }
 
     // =========================================================================
@@ -1613,9 +1638,20 @@ private void startMinimalForeground() {
             // Don't auto-start from Activity Recognition alone — GPS drift/charger vibration
             // can cause false IN_VEHICLE on Pixel 8 etc.
             // Set flag → GPS speed check uses lower threshold (11 km/h instead of 22).
-            Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — waiting for GPS speed confirmation");
+            Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — enabling GPS for speed confirmation");
             if (!isTracking) {
                 activityRecognitionVehicle = true;
+                // Re-enable GPS to confirm vehicle speed — was stopped to save battery
+                startGPSTracking();
+                // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
+                if (autoStopHandler == null) autoStopHandler = new Handler(Looper.getMainLooper());
+                autoStopHandler.postDelayed(() -> {
+                    if (!isTracking && activityRecognitionVehicle) {
+                        Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed, stopping GPS");
+                        activityRecognitionVehicle = false;
+                        stopGpsUpdates();
+                    }
+                }, 120_000L);  // 2 minutes
                 // If GPS speed is already high enough, start now
                 Location loc = getCurrentLocation();
                 if (loc != null && loc.hasSpeed() && loc.getSpeed() >= vehicleThreshold()) {
@@ -1630,6 +1666,11 @@ private void startMinimalForeground() {
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
             // Vehicle exited — reset the flag
             activityRecognitionVehicle = false;
+            // If no trip started, stop GPS to save battery
+            if (!isTracking) {
+                Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
+                stopGpsUpdates();
+            }
 
         } else if (activityType == DetectedActivity.STILL
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
@@ -1638,6 +1679,9 @@ private void startMinimalForeground() {
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
+            } else {
+                // Not tracking + still → ensure GPS is off
+                stopGpsUpdates();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
