@@ -52,7 +52,17 @@ repositories {
     }
 }
 
-def packageJson = new groovy.json.JsonSlurper().parse(file("../../package.json"))
+def findPackageJson(File startDir) {
+    File dir = startDir
+    while (dir != null) {
+        File candidate = new File(dir, "node_modules/capacitor-trip-tracker/package.json")
+        if (candidate.exists()) return candidate
+        dir = dir.parentFile
+    }
+    throw new GradleException("Cannot find capacitor-trip-tracker/package.json")
+}
+
+def packageJson = new groovy.json.JsonSlurper().parse(findPackageJson(project.projectDir))
 def libVersion = packageJson.version
 
 dependencies {
