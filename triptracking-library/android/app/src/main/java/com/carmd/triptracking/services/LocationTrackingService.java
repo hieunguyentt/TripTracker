@@ -250,17 +250,10 @@ public class LocationTrackingService extends Service implements
         // Seed sensor tracker with best available cached location
         startSensorTracking();
 
-        // GPS: only start if restoring an active trip.
-        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for confirmation.
-        // This saves significant battery when device is idle (desk, pocket, table).
-        if (isTracking) {
-            startGPSTracking();
-            Log.d(TAG, "📡 GPS started — restoring active trip");
-        } else {
-            // Get one initial fix for sensor seeding, then stop GPS
-            requestSingleLocationFix();
-            Log.d(TAG, "🔋 GPS not started — waiting for Activity Recognition (no active trip)");
-        }
+        // GPS: always start on app open for initial position + speed detection.
+        // If user is still (detected by sensors), GPS will be stopped automatically
+        // in onMovementDetected() to save battery.
+        startGPSTracking();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -895,6 +888,11 @@ public class LocationTrackingService extends Service implements
                 Log.d(TAG, "Still timer started");
                 startAutoStopTimer();
             }
+            // No active trip + still → stop GPS to save battery.
+            // Activity Recognition will re-enable GPS when IN_VEHICLE detected.
+            if (!isTracking) {
+                stopGpsUpdates();
+            }
         } else {
             // Device is moving — reset still timer and cancel auto-stop
             if (stillSinceMs != 0L) {
@@ -902,6 +900,9 @@ public class LocationTrackingService extends Service implements
                 cancelAutoStopTimer();
                 Log.d(TAG, "Still timer reset — device moving");
             }
+            // Re-enable GPS if it was stopped during still period
+            // so we can detect vehicle speed for auto-start
+            startGPSTracking();
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
