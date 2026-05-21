@@ -265,7 +265,7 @@ public final class TripTrackerAPIService {
                 "latitude": location.coordinate.latitude,
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
-                "activityType": activityType,
+                "activityType": includeVehicleId ? activityType : "still",
                 "route_Id": includeVehicleId ? routeId ?? config.vehicleId : ""
                 
             ]]

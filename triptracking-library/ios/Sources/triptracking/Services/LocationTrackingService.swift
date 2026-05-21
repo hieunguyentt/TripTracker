@@ -116,7 +116,7 @@ public class LocationTrackingService: NSObject {
     private let requiredConsecutiveVehicleFixes: Int = 3
 
     // Speed thresholds — internal so SettingsViewController can read/write
-    public var vehicleThreshold:    Float = 6.0 {  // m/s — at or above → GPS saves
+    public var vehicleThreshold:    Float = 3.0 {  // m/s — at or above → GPS saves
         didSet { print("⚙️ TripTracker vehicleThreshold updated → \(vehicleThreshold) m/s") }
     }
     public var stationaryThreshold: Float = 0.5 {  // m/s — below → device is still / on table
@@ -303,11 +303,11 @@ public class LocationTrackingService: NSObject {
 
     public func startBackgroundTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
@@ -382,9 +382,10 @@ public class LocationTrackingService: NSObject {
         gpsSilenceTimer = nil
 
         let duration = Int64(Date().timeIntervalSince(tripStartTime ?? Date()))
+        stopSensorTracking()
         // Only stop trip-specific sensors (pedometer, device motion).
         // Keep CMMotionActivity alive — it detects the NEXT trip start.
-        stopTripSensors()
+        // stopTripSensors()
 
         DatabaseManager.shared.endTrip(
             id: currentTripId,
@@ -966,7 +967,8 @@ public class LocationTrackingService: NSObject {
         switch next {
         case .automotive:
             // CMMotionActivity says vehicle → cancel auto-end, auto-start if needed
-            cancelAutoEndTimer()
+
+            // cancelAutoEndTimer()
             if !isTracking {
                 autoStartTrip(reason: "Automotive activity detected")
             }
@@ -997,31 +999,31 @@ public class LocationTrackingService: NSObject {
     /// these MUST NOT reset the countdown or the trip will never auto-end.
     private func evaluateAutoTripFromGPS(speed: Float) {
         if speed >= vehicleThreshold {
-                    // ── Vehicle speed detected ──
-                    // But is this GPS fix trustworthy? Reject if accuracy > 20m.
-                    let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
-                    if accuracy > 20 {
-                print("⚠️ TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
-                consecutiveVehicleSpeedCount = 0
-                return
-            }
+            //         // ── Vehicle speed detected ──
+            //         // But is this GPS fix trustworthy? Reject if accuracy > 20m.
+            //         let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
+            //         if accuracy > 20 {
+            //     print("⚠️ TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
+            //     consecutiveVehicleSpeedCount = 0
+            //     return
+            // }
 
-            consecutiveVehicleSpeedCount += 1
+            // consecutiveVehicleSpeedCount += 1
 
             // Cancel auto-end if already tracking
             cancelAutoEndTimer()
 
             if !isTracking {
-                if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                // if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
-                    consecutiveVehicleSpeedCount = 0
-                } else {
-                    print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
-                }
+                //     consecutiveVehicleSpeedCount = 0
+                // } else {
+                //     print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
+                // }
             }
         } else {
             // ── Below vehicle threshold ──
-            consecutiveVehicleSpeedCount = 0
+            // consecutiveVehicleSpeedCount = 0
 
             if isTracking && autoEndTimer == nil {
                 // Speed dropped while trip active → start auto-end countdown.
@@ -1107,7 +1109,7 @@ public class LocationTrackingService: NSObject {
     }
 
     /// Cancel the auto-end countdown (speed rose above 0 again).
-    private func cancelAutoEndTimer() {
+    private func cancelAutoEndTimer() { 
         guard autoEndTimer != nil else { return }
         autoEndTimer?.invalidate()
         autoEndTimer = nil
@@ -1508,6 +1510,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             case .cycling:            activityType = "on_bicycle"
             case .automotive:         activityType = "in_vehicle"
         }
+        
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
             isMoving: safeSpeed > 0 ? true : false,
