@@ -68,11 +68,6 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Tracking state
     public private(set) var isTracking       = false
-
-    /// Tracks if app process is running (foreground or background).
-    /// Cannot rely on UIApplication.shared.applicationState from background threads.
-    /// Set to true on init, stays true until app is terminated (process dies).
-    private var appIsRunning = true
     public private(set) var currentTripId: Int64 = -1
     private var tripStartTime: Date?
     private var totalDistance: Double = 0.0
@@ -276,7 +271,8 @@ public class LocationTrackingService: NSObject {
                 locationManager.distanceFilter  = 30
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else if !appIsRunning {
+            } else if UIApplication.shared.applicationState != .active
+                        && UIApplication.shared.applicationState != .background {
                 // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
                 // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
@@ -284,6 +280,30 @@ public class LocationTrackingService: NSObject {
                 locationManager.startMonitoringVisits()
                 lastGPSLocation = nil
                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
+            } else if UIApplication == nil {
+                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
+                // Significant location changes (~500m) + visits will relaunch app.
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
+                print("📡 TripTracker GPS STOPPED 2222 — still/no trip/terminated (significant changes + visits will relaunch)")
+            }else if UIApplication.shared == nil {
+                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
+                // Significant location changes (~500m) + visits will relaunch app.
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
+                print("📡 TripTracker GPS STOPPED 33333 — still/no trip/terminated (significant changes + visits will relaunch)")
+            }else if UIApplication.shared.applicationState == nil {
+                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
+                // Significant location changes (~500m) + visits will relaunch app.
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
+                print("📡 TripTracker GPS STOPPED 44444 — still/no trip/terminated (significant changes + visits will relaunch)")
             } else {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
                 // Keep GPS at minimal accuracy — don't stop.
@@ -500,10 +520,7 @@ public class LocationTrackingService: NSObject {
     }
 
     public func ensureTerminalTracking() {
-        if !isTracking { 
-            startTerminalTracking() 
-            appIsRunning = false
-        }
+        if !isTracking { startTerminalTracking() }
 
         print("✅ TripTracker ensureTerminalTracking — significant+visits registered, tracking=\(isTracking)")
     }
