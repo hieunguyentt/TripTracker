@@ -268,21 +268,30 @@ public class LocationTrackingService: NSObject {
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
                 // → miss all driving when user resumes.
                 locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.distanceFilter  = 30
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else {
-                // NO TRIP + STILL: Stop GPS to save battery. No blue arrow.
-                // Significant location changes (~500m) + visits will relaunch app if user moves.
-                // locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                // locationManager.distanceFilter  = 50.0
+            } else if UIApplication.shared.applicationState != .active
+                        && UIApplication.shared.applicationState != .inactive {
+                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
+                // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
-                // Reset last GPS location — prevents computing speed from stale position
-                // when GPS restarts (cold start drift: old cached pos → new real pos = huge distance)
                 lastGPSLocation = nil
-                print("📡 TripTracker GPS STOPPED — still/no trip (significant changes + visits will relaunch)")
+                print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
+            } else {
+                // FOREGROUND/BACKGROUND + NO TRIP + STILL:
+                // Keep GPS at minimal accuracy — don't stop.
+                // CMMotionActivity is alive and will upgrade to Best when automotive detected.
+                // Stopping GPS here causes delay on next trip start (cold start 5-30s).
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.distanceFilter  = 30.0
+                locationManager.startUpdatingLocation()
+                // Register significant changes + visits as backup for terminated state
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                print("📡 TripTracker GPS LOW-POWER — still/no trip/foreground (ready for next trip)")
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
@@ -296,7 +305,7 @@ public class LocationTrackingService: NSObject {
         case .automotive:
             // Best accuracy for driving — GPS always alive
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
-            locationManager.distanceFilter  = kCLDistanceFilterNone
+            locationManager.distanceFilter  = 30.0
             locationManager.startUpdatingLocation()
             print("📡 TripTracker GPS ON → automotive: accuracy=Best filter=none")
         }
