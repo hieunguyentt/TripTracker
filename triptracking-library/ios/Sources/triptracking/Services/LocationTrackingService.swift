@@ -68,6 +68,11 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Tracking state
     public private(set) var isTracking       = false
+
+    /// Tracks if app process is running (foreground or background).
+    /// Cannot rely on UIApplication.shared.applicationState from background threads.
+    /// Set to true on init, stays true until app is terminated (process dies).
+    private var appIsRunning = true
     public private(set) var currentTripId: Int64 = -1
     private var tripStartTime: Date?
     private var totalDistance: Double = 0.0
@@ -271,8 +276,7 @@ public class LocationTrackingService: NSObject {
                 locationManager.distanceFilter  = 30
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else if UIApplication.shared.applicationState == .inactive
-                        && UIApplication.shared.applicationState != .background {
+            } else if !appIsRunning {
                 // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
                 // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
