@@ -33,64 +33,58 @@ fi
 # ── 2. Root package-lock.json ──
 ROOT_LOCK="package-lock.json"
 if [ -f "$ROOT_LOCK" ]; then
-    # Update only the top-level "version" (first occurrence)
-    sed -i '' "0,/\"version\": \"[^\"]*\"/s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$ROOT_LOCK"
+    # Update only the top-level "version" (first occurrence) — perl for macOS compat
+    perl -i -pe "BEGIN{\$done=0} if(!\$done && s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/){\$done=1}" "$ROOT_LOCK"
     echo "✅ $ROOT_LOCK → $VERSION"
 fi
 
-# ── 3. Capacitor plugin package.json ──
-CAP_PKG="triptracking-library/capacitor_plugin/package.json"
-if [ -f "$CAP_PKG" ]; then
-    sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$CAP_PKG"
-    echo "✅ $CAP_PKG → $VERSION"
-fi
-
-# ── 4. Capacitor plugin package-lock.json ──
-CAP_LOCK="triptracking-library/capacitor_plugin/package-lock.json"
-if [ -f "$CAP_LOCK" ]; then
-    sed -i '' "0,/\"version\": \"[^\"]*\"/s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$CAP_LOCK"
-    echo "✅ $CAP_LOCK → $VERSION"
-fi
+# ── 3 & 4. Capacitor plugin package.json + package-lock.json ──
+# Handled by "npm version" in step 9 below
 
 # ── 5. CapacitorTripTracker.podspec (root) ──
 ROOT_PODSPEC="CapacitorTripTracker.podspec"
 if [ -f "$ROOT_PODSPEC" ]; then
-    sed -i '' "s/s\.version\s*=\s*'[^']*'/s.version          = '$VERSION'/" "$ROOT_PODSPEC"
+    sed -i '' "s/s\.version[[:space:]]*=[[:space:]]*'[^']*'/s.version          = '$VERSION'/" "$ROOT_PODSPEC"
     echo "✅ $ROOT_PODSPEC → $VERSION"
 fi
 
 # ── 6. CapacitorTripTracker.podspec (capacitor_plugin) ──
 CAP_PODSPEC="triptracking-library/capacitor_plugin/CapacitorTripTracker.podspec"
 if [ -f "$CAP_PODSPEC" ]; then
-    sed -i '' "s/s\.version\s*=\s*'[^']*'/s.version          = '$VERSION'/" "$CAP_PODSPEC"
+    sed -i '' "s/s\.version[[:space:]]*=[[:space:]]*'[^']*'/s.version          = '$VERSION'/" "$CAP_PODSPEC"
     echo "✅ $CAP_PODSPEC → $VERSION"
 fi
 
 # ── 7. triptracking.podspec (root) ──
 ROOT_TT_PODSPEC="triptracking.podspec"
 if [ -f "$ROOT_TT_PODSPEC" ]; then
-    sed -i '' "s/s\.version\s*=\s*'[^']*'/s.version          = '$VERSION'/" "$ROOT_TT_PODSPEC"
+    sed -i '' "s/s\.version[[:space:]]*=[[:space:]]*'[^']*'/s.version          = '$VERSION'/" "$ROOT_TT_PODSPEC"
     echo "✅ $ROOT_TT_PODSPEC → $VERSION"
 fi
 
 # ── 8. triptracking.podspec (ios) ──
 IOS_PODSPEC="triptracking-library/ios/triptracking.podspec"
 if [ -f "$IOS_PODSPEC" ]; then
-    sed -i '' "s/s\.version\s*=\s*'[^']*'/s.version          = '$VERSION'/" "$IOS_PODSPEC"
+    sed -i '' "s/s\.version[[:space:]]*=[[:space:]]*'[^']*'/s.version          = '$VERSION'/" "$IOS_PODSPEC"
     echo "✅ $IOS_PODSPEC → $VERSION"
 fi
 
+# ── 9. Capacitor plugin npm version ──
 echo ""
-echo "📝 Files updated. Committing..."
+echo "📦 Updating npm version in capacitor_plugin..."
+cd triptracking-library/capacitor_plugin
+npm version $VERSION --no-git-tag-version --allow-same-version
+echo "✅ npm version → $VERSION"
+cd ../..
 
-# ── Git: commit + tag + push ──
+echo ""
+echo "📝 All files updated. Committing..."
+
+# ── 10. Git: commit + tag + push ──
 git add -A
 git commit -m "v$VERSION — $MESSAGE"
-git push origin main
-
-echo ""
-echo "🏷️  Creating tag $VERSION..."
 git tag "$VERSION"
+git push origin main
 git push origin "$VERSION"
 
 echo ""
