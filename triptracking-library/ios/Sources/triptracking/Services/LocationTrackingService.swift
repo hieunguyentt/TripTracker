@@ -500,7 +500,10 @@ public class LocationTrackingService: NSObject {
     }
 
     public func ensureTerminalTracking() {
-        if !isTracking { startTerminalTracking() }
+        if !isTracking { 
+            startTerminalTracking() 
+            appIsRunning = false
+        }
 
         print("✅ TripTracker ensureTerminalTracking — significant+visits registered, tracking=\(isTracking)")
     }
