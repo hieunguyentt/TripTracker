@@ -77,6 +77,24 @@ npm version $VERSION --no-git-tag-version --allow-same-version
 echo "✅ npm version → $VERSION"
 cd ../..
 
+# ── 10. Ensure .gitignore excludes zip files ──
+GITIGNORE=".gitignore"
+PATTERNS=(
+    "*.zip"
+)
+for pattern in "${PATTERNS[@]}"; do
+    if ! grep -qxF "$pattern" "$GITIGNORE" 2>/dev/null; then
+        echo "$pattern" >> "$GITIGNORE"
+        echo "✅ Added '$pattern' to .gitignore"
+    fi
+done
+
+# Remove any tracked zip files from git cache
+git rm --cached triptracking-library/android/app/src/main/java/com/carmd/triptracking*.zip 2>/dev/null || true
+git rm --cached triptracking-library/ios/Sources*.zip 2>/dev/null || true
+git rm --cached triptracking-library/ios/Sources/triptracking.zip 2>/dev/null || true
+
+
 echo ""
 echo "📝 All files updated. Committing..."
 

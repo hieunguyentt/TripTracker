@@ -272,7 +272,7 @@ public class LocationTrackingService: NSObject {
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
             } else if UIApplication.shared.applicationState != .active
-                        && UIApplication.shared.applicationState != .inactive {
+                        && UIApplication.shared.applicationState != .background {
                 // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
                 // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
