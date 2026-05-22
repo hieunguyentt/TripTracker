@@ -263,6 +263,8 @@ public class LocationTrackingService: NSObject {
 
         switch state {
         case .still, .unknown:
+            print("TripTracker GPS State: \(UIApplication.shared.applicationState)")
+
             if isTracking {
                 // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
@@ -280,32 +282,7 @@ public class LocationTrackingService: NSObject {
                 locationManager.startMonitoringVisits()
                 lastGPSLocation = nil
                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
-            } else if UIApplication == nil {
-                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
-                // Significant location changes (~500m) + visits will relaunch app.
-                locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                lastGPSLocation = nil
-                print("📡 TripTracker GPS STOPPED 2222 — still/no trip/terminated (significant changes + visits will relaunch)")
-            }else if UIApplication.shared == nil {
-                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
-                // Significant location changes (~500m) + visits will relaunch app.
-                locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                lastGPSLocation = nil
-                print("📡 TripTracker GPS STOPPED 33333 — still/no trip/terminated (significant changes + visits will relaunch)")
-            }else if UIApplication.shared.applicationState == nil {
-                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
-                // Significant location changes (~500m) + visits will relaunch app.
-                locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                lastGPSLocation = nil
-                print("📡 TripTracker GPS STOPPED 44444 — still/no trip/terminated (significant changes + visits will relaunch)")
-            } else {
-                // FOREGROUND/BACKGROUND + NO TRIP + STILL:
+            } else {                // FOREGROUND/BACKGROUND + NO TRIP + STILL:
                 // Keep GPS at minimal accuracy — don't stop.
                 // CMMotionActivity is alive and will upgrade to Best when automotive detected.
                 // Stopping GPS here causes delay on next trip start (cold start 5-30s).
