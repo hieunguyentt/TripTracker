@@ -104,6 +104,14 @@ public final class TripTrackerSDK {
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
+        // Set terminated flag — controls GPS behavior after trip end
+        // Foreground/background: GPS LOW-POWER (fast next-trip detection)
+        // Terminated relaunch: GPS STOP (save battery, use significant changes)
+        if isLocationRelaunch {
+            LocationTrackingService.shared.appInactive = true
+            print("📡 TripTracker Location relaunch detected — app is inactive")
+        }
+
         // ALWAYS start the service — it requests permission internally
         LocationTrackingService.shared.startBackgroundTracking()
 
@@ -223,6 +231,15 @@ public final class TripTrackerSDK {
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
+
+    public static func willEnterForeground() {
+        let svc = LocationTrackingService.shared
+        if svc.appInactive {
+            svc.appInactive = false
+            print("🔄 TripTracker willEnterForeground — terminated flag reset")
+        }
+    }
+
     public static func willTerminate() {
         // Save database checkpoint
         DatabaseManager.shared.saveContext()

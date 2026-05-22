@@ -88,6 +88,7 @@ public class LocationTrackingService: NSObject {
     /// When true, real GPS fixes are ignored — only fake injected locations are processed.
     /// Set by MainViewController when a fake route simulation is running.
     public var isFakeRouteActive: Bool = false
+    public var appInactive: Bool = false
 
     /// Internal flag: true during injectFakeGPS() so didUpdateLocations knows it's fake.
     private var isProcessingFakeGPS: Bool = false
@@ -264,6 +265,7 @@ public class LocationTrackingService: NSObject {
         switch state {
         case .still, .unknown:
             print("TripTracker GPS State: \(UIApplication.shared.applicationState)")
+            print("TripTracker GPS State: \(appInactive ? "App is inactive" : "App is active")")
 
             if isTracking {
                 // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
@@ -273,8 +275,7 @@ public class LocationTrackingService: NSObject {
                 locationManager.distanceFilter  = 30
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else if UIApplication.shared.applicationState != .active
-                        && UIApplication.shared.applicationState != .background {
+            } else if appInactive{
                 // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
                 // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
