@@ -450,7 +450,7 @@ public class LocationTrackingService extends Service implements
         long sec = duration % 60;
         if (AppSettings.isNotifTripEnd(this))
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
-                    "Trip #" + tripId + " - " + vehicle_id + " — " + distStr + " in " +
+                    "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr + " in " +
                     String.format("%02d:%02d", min, sec));
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripEnded(tripId, dist, duration);
@@ -517,7 +517,7 @@ public class LocationTrackingService extends Service implements
         startTracking(triggerLocation);
         if (AppSettings.isNotifTripStart(this))
             showTripNotification(NOTIF_TRIP_START, "🚗 Trip Started",
-                "Auto-trip #" + currentTripId + " - " + vehicle_id + " — vehicle speed detected");
+                "Auto-trip #" + currentTripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — vehicle speed detected");
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripStarted(currentTripId);
@@ -542,7 +542,7 @@ public class LocationTrackingService extends Service implements
         long sec = duration % 60;
         if (AppSettings.isNotifTripEnd(this))
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
-                    "Trip #" + tripId + " — " + distStr + " in " +
+                    "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr + " in " +
                     String.format("%02d:%02d", min, sec));
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)

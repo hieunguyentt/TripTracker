@@ -286,6 +286,10 @@ public final class TripTrackerAPIService {
         Log.i(TAG, "vehicle_id updated → " + this.vehicleId);
     }
 
+    public String getVehicleId() {
+        return vehicleId;
+    }
+
     public void setRouteId(String id) { this.routeId = id != null ? id : ""; }
     public boolean isEnabled() { return !pingURL.isEmpty() && !endURL.isEmpty() && !userId.isEmpty(); }
     public boolean hasRouteId() { return routeId != null && !routeId.isEmpty(); }

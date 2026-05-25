@@ -555,7 +555,8 @@ public class LocationTrackingService: NSObject {
                 tripId: info.id,
                 reason: "No activity for \(Int(silentSecs / 60)) min (app was terminated)",
                 distance: distance,
-                duration: duration
+                duration: duration,
+                vehicleId: TripTrackerAPIService.shared.config.vehicleId
             )
 
             DispatchQueue.main.async { [weak self] in
@@ -1109,7 +1110,7 @@ public class LocationTrackingService: NSObject {
         startTrip(withInitialLocation: initialLocation)
 
         // Local push notification
-        NotificationManager.shared.notifyTripStarted(tripId: currentTripId)
+        NotificationManager.shared.notifyTripStarted(tripId: currentTripId, vehicleId: TripTrackerAPIService.shared.config.vehicleId)
 
         // Voice feedback
         VoiceFeedbackManager.shared.resetMilestones()
@@ -1194,7 +1195,8 @@ public class LocationTrackingService: NSObject {
             tripId: tripId,
             reason: reason,
             distance: stats.distance,
-            duration: stats.duration
+            duration: stats.duration,
+            vehicleId: TripTrackerAPIService.shared.config.vehicleId
         )
 
         // Voice feedback
