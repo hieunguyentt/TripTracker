@@ -152,7 +152,7 @@ public class LocationTrackingService: NSObject {
         get { saveIntervalStillMs }
         set { saveIntervalStillMs = newValue }
     }
-    public var saveDistanceVehicleM: Double = 30.0    // GPS: save every 30 m at vehicle speed
+    public var saveDistanceVehicleM: Double = 80.0    // GPS: save every 80 m at vehicle speed
 
     // MARK: - Auto Trip (always enabled)
     //
@@ -232,7 +232,7 @@ public class LocationTrackingService: NSObject {
         locationManager.distanceFilter                     = 10.0
         locationManager.allowsBackgroundLocationUpdates    = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.showsBackgroundLocationIndicator   = true
+        locationManager.showsBackgroundLocationIndicator   = false
         locationManager.requestAlwaysAuthorization()
     }
 
@@ -271,29 +271,15 @@ public class LocationTrackingService: NSObject {
                 // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
                 // → miss all driving when user resumes.
-                locationManager.desiredAccuracy = kCLLocationAccuracyBest
-                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = 10.0
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else if appTerminated {
-                // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
-                // Significant location changes (~500m) + visits will relaunch app.
+            } else {
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
                 lastGPSLocation = nil
-                print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
-            } else {                // FOREGROUND/BACKGROUND + NO TRIP + STILL:
-                // Keep GPS at minimal accuracy — don't stop.
-                // CMMotionActivity is alive and will upgrade to Best when automotive detected.
-                // Stopping GPS here causes delay on next trip start (cold start 5-30s).
-                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10.0
-                locationManager.startUpdatingLocation()
-                // Register significant changes + visits as backup for terminated state
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                print("📡 TripTracker GPS LOW-POWER — still/no trip/foreground (ready for next trip)")
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
@@ -317,9 +303,20 @@ public class LocationTrackingService: NSObject {
 
     public func startTerminalTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
-        locationManager.stopUpdatingLocation()
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
+        if isTracking {
+                // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
+                // If we stop GPS → iOS suspends app → timers die → auto-end never fires
+                // → miss all driving when user resumes.
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.startUpdatingLocation()
+                print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
+            } else {
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
+            }
         print("✅ TripTracker Terminal tracking started (GPS always-on + significant changes + visits)")
     }
 
@@ -327,10 +324,20 @@ public class LocationTrackingService: NSObject {
         // Start GPS — NEVER stops (keeps app alive in background)
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.startUpdatingLocation()
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
-        locationManager.showsBackgroundLocationIndicator = false // no blue bar for background tracking
+        if isTracking {
+                // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
+                // If we stop GPS → iOS suspends app → timers die → auto-end never fires
+                // → miss all driving when user resumes.
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.startUpdatingLocation()
+                print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
+            } else {
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
+            }
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
@@ -429,21 +436,7 @@ public class LocationTrackingService: NSObject {
         delegate?.didChangeTrackingState(isTracking: false)
         print("✅ TripTracker Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
 
-        // Stop GPS completely for 20s after trip end.
-        // Prevents: residual speed → immediate auto-start, and saves battery briefly.
-        // After 20s: switch to LOW-POWER GPS for fast next-trip detection.
-        locationManager.stopUpdatingLocation()
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()
-        lastGPSLocation = nil
-        print("📡 TripTracker GPS STOPPED — 20s cooldown after trip end")
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
-            guard let self = self, !self.isTracking else { return }
-            // Resume LOW-POWER GPS for next trip detection
-            self.adaptLocationAccuracy(for: .still)
-            print("📡 TripTracker GPS LOW-POWER resumed — cooldown complete, ready for next trip")
-        }
+        self.adaptLocationAccuracy(for: .still)
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
@@ -1357,9 +1350,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         currentSource = source
 
         // Always calibrate sensor baseline when accuracy is good
-        if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
-            if lastSensorLocation == nil { lastSensorLocation = location }
-        }
+        if lastSensorLocation == nil { lastSensorLocation = location }
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
