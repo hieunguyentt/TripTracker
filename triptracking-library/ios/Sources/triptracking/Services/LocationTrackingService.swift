@@ -268,13 +268,13 @@ public class LocationTrackingService: NSObject {
             print("TripTracker GPS State: \(appTerminated ? "App is terminated" : "App is not terminated")")
 
             if isTracking {
-                // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
-                // If we stop GPS → iOS suspends app → timers die → auto-end never fires
-                // → miss all driving when user resumes.
-                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10.0
+                // ACTIVE TRIP: Keep GPS at Best accuracy — need continuous speed readings
+                // for trip tracking and auto-end timer. Don't downgrade even if CMMotionActivity
+                // briefly reports .still (red light, slow traffic, etc.)
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
-                print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
+                print("📡 TripTracker GPS BEST — still during active trip (keeping full accuracy)")
             } else {
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
@@ -767,9 +767,19 @@ public class LocationTrackingService: NSObject {
 
         guard shouldSave else { return }
 
-        let baseLoc = source == .gps
-            ? (lastGPSLocation    ?? lastKnownLocation)
-            : (lastSensorLocation ?? lastKnownLocation ?? locationManager.location)
+        let baseLoc: CLLocation?
+        if source == .gps {
+            baseLoc = lastGPSLocation ?? lastKnownLocation
+        } else {
+            // Prefer fresh GPS fix or CLLocationManager.location over stale sensor position
+            if let gps = lastGPSLocation, abs(gps.timestamp.timeIntervalSinceNow) < 60 {
+                baseLoc = gps
+            } else if let clm = locationManager.location, abs(clm.timestamp.timeIntervalSinceNow) < 120 {
+                baseLoc = clm
+            } else {
+                baseLoc = lastSensorLocation ?? lastKnownLocation
+            }
+        }
         guard let base = baseLoc else { return }
 
         let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
@@ -949,12 +959,25 @@ public class LocationTrackingService: NSObject {
         guard nowMs - lastLocationSaveTime >= requiredIntervalMs else { return }
         lastLocationSaveTime = nowMs
 
-        // Pick best location for this source
+        // Pick the FRESHEST location available — avoid sending stale cached positions.
+        // Priority: latest GPS fix > CLLocationManager.location > sensor location
         let baseLoc: CLLocation?
+        let freshGPS = lastGPSLocation
+        let freshCLM = locationManager.location
+        
         if source == .gps {
-            baseLoc = lastGPSLocation ?? lastKnownLocation
+            baseLoc = freshGPS ?? freshCLM ?? lastKnownLocation
         } else {
-            baseLoc = lastSensorLocation ?? lastKnownLocation ?? locationManager.location
+            // For sensor source: prefer latest GPS fix if it's recent (< 60s old),
+            // otherwise use CLLocationManager.location (always up-to-date).
+            // NEVER use lastSensorLocation alone — it can be from a completely different area.
+            if let gps = freshGPS, abs(gps.timestamp.timeIntervalSinceNow) < 60 {
+                baseLoc = gps
+            } else if let clm = freshCLM, abs(clm.timestamp.timeIntervalSinceNow) < 120 {
+                baseLoc = clm
+            } else {
+                baseLoc = lastSensorLocation ?? lastKnownLocation
+            }
         }
         guard let base = baseLoc else {
             print("⏰ TripTracker Periodic save skipped — no location available yet")
