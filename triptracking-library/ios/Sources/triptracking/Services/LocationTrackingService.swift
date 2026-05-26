@@ -152,7 +152,7 @@ public class LocationTrackingService: NSObject {
         get { saveIntervalStillMs }
         set { saveIntervalStillMs = newValue }
     }
-    public var saveDistanceVehicleM: Double = 30.0    // GPS: save every 80 m at vehicle speed
+    public var saveDistanceVehicleM: Double = 0.0    // GPS: save every 80 m at vehicle speed
 
     // MARK: - Auto Trip (always enabled)
     //
@@ -1108,6 +1108,15 @@ public class LocationTrackingService: NSObject {
     /// Auto-start a new trip (vehicle speed detected).
     private func autoStartTrip(reason: String) {
         guard !isTracking else { return }
+
+        // Only auto-start if vehicle_id or route_id is configured.
+        // If neither is set, user hasn't selected a vehicle yet — don't start trip.
+        let vehicleId = TripTrackerAPIService.shared.config.vehicleId
+        let routeId = TripTrackerAPIService.shared.config.routeId
+        guard !vehicleId.isEmpty || !routeId.isEmpty else {
+            print("⏳ TripTracker Auto-start SKIPPED — no vehicle_id or route_id configured")
+            return
+        }
 
         print("🤖  TripTracker Auto-start trip — \(reason)")
 
