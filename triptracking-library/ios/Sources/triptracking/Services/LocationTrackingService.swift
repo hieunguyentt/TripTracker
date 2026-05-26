@@ -152,7 +152,7 @@ public class LocationTrackingService: NSObject {
         get { saveIntervalStillMs }
         set { saveIntervalStillMs = newValue }
     }
-    public var saveDistanceVehicleM: Double = 80.0    // GPS: save every 80 m at vehicle speed
+    public var saveDistanceVehicleM: Double = 30.0    // GPS: save every 80 m at vehicle speed
 
     // MARK: - Auto Trip (always enabled)
     //
