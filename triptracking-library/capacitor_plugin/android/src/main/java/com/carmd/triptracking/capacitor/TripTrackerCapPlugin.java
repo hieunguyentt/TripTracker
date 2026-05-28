@@ -40,6 +40,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import com.carmd.triptracking.util.LogcatWriter;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 
 @CapacitorPlugin(name = "TripTracker")
 public class TripTrackerCapPlugin extends Plugin {
@@ -544,8 +546,20 @@ public class TripTrackerCapPlugin extends Plugin {
             intent.putExtra(Intent.EXTRA_SUBJECT, "TripTracker Logs");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             // Grant permission to all apps that can handle this intent
-            intent.setClipData(android.content.ClipData.newRawUri("", uri));
-            getActivity().startActivity(Intent.createChooser(intent, "Share Logs"));
+            // Grant read permission to ALL apps that can handle this intent
+            Intent chooser = Intent.createChooser(intent, "Share Logs");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    
+            // Explicitly grant to all potential receivers
+            List<ResolveInfo> resInfoList = getContext().getPackageManager().queryIntentActivities(chooser, PackageManager.MATCH_DEFAULT_ONLY);
+            for (ResolveInfo resolveInfo : resInfoList) {
+                getContext().grantUriPermission(
+                resolveInfo.activityInfo.packageName,
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            }
+    
+            getActivity().startActivity(chooser);
         }
     }
 
