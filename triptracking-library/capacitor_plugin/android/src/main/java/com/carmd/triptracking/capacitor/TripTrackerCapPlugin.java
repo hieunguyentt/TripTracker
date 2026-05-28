@@ -531,11 +531,9 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void sendAllLogs(PluginCall call) {
-        int days = call.getInt("days", 3);
-        shareLogFiles(days);
+        shareLogFiles(-1);  // -1 = all files
         JSObject ret = new JSObject();
         ret.put("shared", true);
-        ret.put("days", days);
         call.resolve(ret);
     }
 
