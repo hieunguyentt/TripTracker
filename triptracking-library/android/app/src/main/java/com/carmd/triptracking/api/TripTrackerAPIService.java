@@ -297,7 +297,7 @@ public final class TripTrackerAPIService {
     // ── Trip lifecycle — controls vehicle_id inclusion ──
     public void onTripStart() {
         includeVehicleId = true;
-        Log.i(TAG, "Trip started — vehicle_id will be included in pings");
+        Log.i(TAG, "Trip started — vehicle_id will be included in pings " + pingURL + " routeId: " + routeId);
     }
 
     public void onTripEnd() {

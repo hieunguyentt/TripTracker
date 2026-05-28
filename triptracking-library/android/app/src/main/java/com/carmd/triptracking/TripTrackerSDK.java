@@ -96,6 +96,7 @@ public final class TripTrackerSDK {
                     && config.userId != null && !config.userId.isEmpty();
             if (hasRealConfig) {
                 applyConfig(context, config);
+                Log.i(TAG, "📡 Init successful — " + config.pingURL + " routeId: " + config.routeId + " userId: " + config.userId);
             } else {
                 Log.i(TAG, "📡 Re-init skipped — incoming config has empty API values (restored config preserved)");
             }
@@ -167,7 +168,7 @@ public final class TripTrackerSDK {
             ed.putString("api_authorizationKey", config.authorizationKey != null ? config.authorizationKey : "");
             ed.putString("api_apiAuthKey", config.apiAuthKey != null ? config.apiAuthKey : "");
             ed.putString("api_apiAuthToken", config.apiAuthToken != null ? config.apiAuthToken : "");
-            Log.i("TripTrackerSDK", "📡 API config saved — userId=" + config.userId);
+            Log.i("TripTrackerSDK", "📡 API config saved — userId=" + config.userId + ", routeId=" + config.routeId + ", pingURL=" + config.pingURL);
         } else {
             Log.i("TripTrackerSDK", "📡 API config NOT overwritten — incoming config is empty (preserved from SharedPreferences)");
         }

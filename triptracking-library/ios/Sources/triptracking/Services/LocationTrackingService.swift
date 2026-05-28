@@ -295,8 +295,6 @@ public class LocationTrackingService: NSObject {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
                 // Keep GPS at low-power — don't stop.
                 // CMMotionActivity will upgrade to Best when automotive detected.
-                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 30.0
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
