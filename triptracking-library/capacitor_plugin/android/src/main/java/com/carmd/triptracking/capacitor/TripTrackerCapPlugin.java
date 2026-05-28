@@ -39,6 +39,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import com.carmd.triptracking.util.LogcatWriter;
 
 @CapacitorPlugin(name = "TripTracker")
 public class TripTrackerCapPlugin extends Plugin {

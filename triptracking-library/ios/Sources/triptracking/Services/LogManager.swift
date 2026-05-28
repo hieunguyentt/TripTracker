@@ -270,16 +270,8 @@ public class LogManager: NSObject {
         // Remove old zip if exists
         try? FileManager.default.removeItem(at: zipURL)
 
-        // Create zip using NSFileCoordinator (built-in, no 3rd party)
-        guard let archive = Archive(url: zipURL, accessMode: .create) else {
-            // Fallback: use shell zip via Process (not available on iOS)
-            // Instead, create zip manually using zlib
-            return createZipManually(files: files, zipURL: zipURL)
-        }
-        for file in files {
-            try? archive.addEntry(with: file.lastPathComponent, relativeTo: file.deletingLastPathComponent())
-        }
-        return FileManager.default.fileExists(atPath: zipURL.path) ? zipURL : nil
+        // Create zip using NSFileCoordinator (built-in iOS API)
+        return createZipManually(files: files, zipURL: zipURL)
     }
 
     /// Manual zip creation using Foundation's built-in compression
