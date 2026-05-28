@@ -537,14 +537,15 @@ public class TripTrackerCapPlugin extends Plugin {
         // call.resolve(ret);
         File zip = LogcatWriter.getZippedLogs(getContext());
         if (zip != null) {
-            // Share via Intent
-            Uri uri = getUriForFile(zip);
+            Uri uri = FileProvider.getUriForFile(getContext(),getContext().getPackageName() + ".fileprovider", zip);
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.setType("application/zip");
             intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.putExtra(Intent.EXTRA_SUBJECT, "TripTracker Logs");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // Grant permission to all apps that can handle this intent
+            intent.setClipData(android.content.ClipData.newRawUri("", uri));
             getActivity().startActivity(Intent.createChooser(intent, "Share Logs"));
-            call.resolve(new JSObject().put("shared", true));
         }
     }
 
