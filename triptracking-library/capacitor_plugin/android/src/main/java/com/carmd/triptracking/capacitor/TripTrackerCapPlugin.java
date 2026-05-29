@@ -531,7 +531,7 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void sendAllLogs(PluginCall call) {
-        shareLogFiles(-1);  // -1 = all files
+        shareLogFiles(3);  // 3 = last 3 days
         JSObject ret = new JSObject();
         ret.put("shared", true);
         call.resolve(ret);
@@ -562,57 +562,97 @@ public class TripTrackerCapPlugin extends Plugin {
      * @param days  0 = today only, -1 = all, N = last N days
      */
     private void shareLogFiles(int days) {
-        if (getActivity() == null) return;
+    if (getActivity() == null) return;
 
-        // Collect dates to include
-        java.util.Set<String> datesToInclude = new java.util.HashSet<>();
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
-        if (days >= 0) {
-            int count = (days == 0) ? 1 : days;
-            java.util.Calendar cal = java.util.Calendar.getInstance();
-            for (int i = 0; i < count; i++) {
-                datesToInclude.add(sdf.format(cal.getTime()));
-                cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
-            }
-        }
+    Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
+    File zip = com.carmd.triptracking.util.LogcatWriter.getZippedLogs(getContext(), zipDays);
+    if (zip == null) return;
 
-        // Get files from LogcatWriter (uses getCacheDir, prefix "triptracker_logcat_")
-        File[] logFiles = com.carmd.triptracking.util.LogcatWriter.getAllLogFiles(getContext());
-        if (logFiles == null || logFiles.length == 0) return;
+    String subject;
+    if (days == 0) subject = "TripTracker Today's Log";
+    else if (days == -1) subject = "TripTracker All Logs";
+    else subject = "TripTracker Logs — Last " + days + " days";
 
-        ArrayList<Uri> uris = new ArrayList<>();
-        for (File f : logFiles) {
-            if (days == -1) {
-                // All files
-                uris.add(getUriForFile(f));
-            } else {
-                // Filter by date
-                for (String date : datesToInclude) {
-                    if (f.getName().contains(date)) {
-                        uris.add(getUriForFile(f));
-                        break;
-                    }
-                }
-            }
-        }
-        if (uris.isEmpty()) return;
+    try {
+        // Copy zip to external cache — bypasses FileProvider permission issues
+        File externalDir = getContext().getExternalCacheDir();
+        if (externalDir == null) externalDir = getContext().getCacheDir();
+        File shareFile = new File(externalDir, zip.getName());
+        java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-        String subject;
-        if (days == 0) {
-            subject = "TripTracker Today's Log";
-        } else if (days == -1) {
-            subject = "TripTracker All Logs (" + logFiles.length + " files)";
-        } else {
-            subject = "TripTracker Logs — Last " + days + " days";
-        }
+        Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                getContext(),
+                getContext().getPackageName() + ".fileprovider",
+                shareFile);
 
-        Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-        shareIntent.setType("text/plain");
-        shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-        shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
-        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        getActivity().startActivity(Intent.createChooser(shareIntent, subject));
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_STREAM, uri);
+        intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        // Grant permission explicitly to all possible receivers
+        getContext().grantUriPermission(
+                "android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        getActivity().startActivity(Intent.createChooser(intent, subject));
+    } catch (Exception e) {
+        android.util.Log.e("TripTrackerPlugin", "Share failed: " + e.getMessage());
     }
+}
+    // private void shareLogFiles(int days) {
+    //     if (getActivity() == null) return;
+
+    //     // Collect dates to include
+    //     java.util.Set<String> datesToInclude = new java.util.HashSet<>();
+    //     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+    //     if (days >= 0) {
+    //         int count = (days == 0) ? 1 : days;
+    //         java.util.Calendar cal = java.util.Calendar.getInstance();
+    //         for (int i = 0; i < count; i++) {
+    //             datesToInclude.add(sdf.format(cal.getTime()));
+    //             cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
+    //         }
+    //     }
+
+    //     // Get files from LogcatWriter (uses getCacheDir, prefix "triptracker_logcat_")
+    //     File[] logFiles = com.carmd.triptracking.util.LogcatWriter.getAllLogFiles(getContext());
+    //     if (logFiles == null || logFiles.length == 0) return;
+
+    //     ArrayList<Uri> uris = new ArrayList<>();
+    //     for (File f : logFiles) {
+    //         if (days == -1) {
+    //             // All files
+    //             uris.add(getUriForFile(f));
+    //         } else {
+    //             // Filter by date
+    //             for (String date : datesToInclude) {
+    //                 if (f.getName().contains(date)) {
+    //                     uris.add(getUriForFile(f));
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     if (uris.isEmpty()) return;
+
+    //     String subject;
+    //     if (days == 0) {
+    //         subject = "TripTracker Today's Log";
+    //     } else if (days == -1) {
+    //         subject = "TripTracker All Logs (" + logFiles.length + " files)";
+    //     } else {
+    //         subject = "TripTracker Logs — Last " + days + " days";
+    //     }
+
+    //     Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+    //     shareIntent.setType("text/plain");
+    //     shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+    //     shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
+    //     shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    //     getActivity().startActivity(Intent.createChooser(shareIntent, subject));
+    // }
 
     private Uri getUriForFile(File f) {
         return FileProvider.getUriForFile(getContext(),

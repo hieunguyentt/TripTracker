@@ -1264,9 +1264,17 @@ public class LocationTrackingService: NSObject {
         let stats = getCurrentStats()
         print("🤖 TripTracker Auto-end trip #\(tripId) — reason: \(reason)")
 
-        // Send 3 final pings at speed=0 with current location
-        // so server knows the exact stop position before trip ends
-        if let finalLoc = lastGPSLocation ?? locationManager.location {
+        // Send 3 final pings at speed=0 with the LAST KNOWN GOOD position.
+        // Priority: lastPingedLocation (last API ping) > lastGPSLocation > locationManager.location
+        // lastPingedLocation is the most accurate because it passed the 80m distance gate
+        // and was a real GPS fix during the trip.
+        let finalLoc: CLLocation? = {
+            if let pinged = lastPingedLocation { return pinged }
+            if let gps = lastGPSLocation, abs(gps.timestamp.timeIntervalSinceNow) < 600 { return gps }
+            return locationManager.location
+        }()
+
+        if let finalLoc = finalLoc {
             let pt = LocationPoint(
                 tripId:    currentTripId != -1 ? currentTripId : nil,
                 latitude: finalLoc.coordinate.latitude,
@@ -1281,10 +1289,8 @@ public class LocationTrackingService: NSObject {
 
             // Temporarily clear lastPingedLocation so distance gate doesn't block
             lastPingedLocation = nil
-            for i in 1...3 {
-                sendAPIPing(location: pt, source: .gps, speed: 0)
-                print("📡 TripTracker Final ping \(i)/3 before trip end — \(pt.latitude),\(pt.longitude)")
-            }
+            sendAPIPing(location: pt, source: .gps, speed: 0)
+            print("📡 TripTracker Final ping \(i)/3 before trip end — \(pt.latitude),\(pt.longitude)")
         }
 
         stopTrip()

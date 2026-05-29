@@ -669,9 +669,15 @@ public class LocationTrackingService extends Service implements
     private void stopGpsUpdates() {
         try {
             locationManager.removeUpdates(this);
-            Log.d(TAG, "🔋 GPS stopped — saving battery (Activity Recognition still active)");
-        } catch (Exception e) {
-            Log.e(TAG, "stopGpsUpdates error: " + e.getMessage());
+            // Immediately re-register at low rate — keeps GPS chip warm
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER, 
+                    30_000L,  // 30 seconds interval
+                    100f,     // 100 meters displacement
+                    this);
+            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+        } catch (SecurityException e) {
+            Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
     }
 
