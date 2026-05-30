@@ -85,6 +85,9 @@ public final class TripTrackerSDK {
         webServer?.stop()
         webServer = nil
 
+        // ALWAYS start the service — it requests permission internally
+        LocationTrackingService.shared.startBackgroundTracking()
+
         if(_initialized) {
             print("⚠️ TripTracker already initialized — re-applying config")
             return
@@ -104,9 +107,6 @@ public final class TripTrackerSDK {
 
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
-
-        // ALWAYS start the service — it requests permission internally
-        LocationTrackingService.shared.startBackgroundTracking()
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
@@ -136,6 +136,12 @@ public final class TripTrackerSDK {
     }
 
     // ── Permission ──
+    /// Called when permission is granted (from delegate or plugin)
+    public static func requestPermissionGranted() {
+        LocationTrackingService.shared.startBackgroundTracking()
+        print("✅ TripTracker requestPermissionGranted called — tracking activated (ensure permissionDelegate is set to observe permission changes if permission not yet granted)")
+    }
+
     public static var hasLocationPermission: Bool {
         let status = CLLocationManager().authorizationStatus
         return status == .authorizedAlways || status == .authorizedWhenInUse
