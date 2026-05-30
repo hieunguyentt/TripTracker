@@ -147,6 +147,7 @@ public final class TripTrackerSDK {
 
     // ── Apply config to UserDefaults + live services ──
     public static func applyConfig(_ config: TripTrackerConfig) {
+    
         let ud = UserDefaults.standard
         ud.set(config.saveIntervalMinutes * 60.0, forKey: "tt_saveIntervalSecs")
         ud.set(config.saveDistanceMeters, forKey: "tt_saveDistanceVehicleM")
@@ -164,6 +165,7 @@ public final class TripTrackerSDK {
 
         GeofenceManager.shared.isEnabled = config.geofenceEnabled
 
+        print("🔧 TripTracker config applied - Start Location Tracking Service")
         let svc = LocationTrackingService.shared
         svc.vehicleThreshold = config.vehicleThreshold
         svc.saveDistanceVehicleM = config.saveDistanceMeters
