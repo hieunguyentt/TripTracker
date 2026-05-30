@@ -85,18 +85,22 @@ public final class TripTrackerSDK {
         webServer?.stop()
         webServer = nil
 
-        // Restore API config from UserDefaults (in case app was killed + relaunched)
-        restoreAPIConfigFromDefaults()
-
-        if(!config.userId.isEmpty) {
+        if(_initialized) {
+            print("⚠️ TripTracker already initialized — re-applying config")
+            return
+        }else{
+            // Restore API config from UserDefaults (in case app was killed + relaunched)
+            restoreAPIConfigFromDefaults()
+            print("📡 TripTracker Initializing — applying config")
+            if(!config.userId.isEmpty) {
             applyConfig(config)
             print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
         } else {
             print("📡 TripTracker Initializing — incoming config has empty userId, using restored config from UserDefaults")
         }
+        
         LogManager.shared.start()
 
-        
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
@@ -165,7 +169,7 @@ public final class TripTrackerSDK {
 
         GeofenceManager.shared.isEnabled = config.geofenceEnabled
 
-        print("🔧 TripTracker config applied - Start Location Tracking Service")
+        print("🔧 TripTracker config applied - Start Location Tracking")
         let svc = LocationTrackingService.shared
         svc.vehicleThreshold = config.vehicleThreshold
         svc.saveDistanceVehicleM = config.saveDistanceMeters
