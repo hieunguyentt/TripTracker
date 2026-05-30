@@ -266,14 +266,6 @@
 //             return
 //         }
 
-//         // Don't downgrade GPS until we've received at least one fix.
-//         // First install or after terminated: GPS needs to warm up and deliver a fix
-//         // before we can assess motion state. Only upgrading to .automotive is allowed.
-//         if !hasReceivedFirstGPSFix && state != .automotive {
-//             print("📡 TripTracker adaptLocationAccuracy(\(state.rawValue)) SKIPPED — waiting for first GPS fix")
-//             return
-//         }
-
 //         // ⚠️ CRITICAL: NEVER call stopUpdatingLocation().
 //         // GPS must always be running (even at low accuracy) so iOS keeps the
 //         // app alive in background. Stopping GPS = iOS kills the app.
@@ -301,12 +293,8 @@
 //                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
 //             } else {
 //                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
-//                 // Keep GPS alive — MUST keep receiving callbacks.
-//                 // CMMotionActivity may fail to detect movement on some devices.
-//                 // Using kCLDistanceFilterNone ensures didUpdateLocations always fires
-//                 // so evaluateAutoTripFromGPS can detect vehicle speed.
-//                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-//                 locationManager.distanceFilter  = kCLDistanceFilterNone
+//                 // Keep GPS at low-power — don't stop.
+//                 // CMMotionActivity will upgrade to Best when automotive detected.
 //                 locationManager.startUpdatingLocation()
 //                 locationManager.startMonitoringSignificantLocationChanges()
 //                 locationManager.startMonitoringVisits()
@@ -364,26 +352,10 @@
 //         print("✅ TripTracker Terminal tracking started (GPS always-on + significant changes + visits)")
 //     }
 
-//     private var isBackgroundTrackingStarted = false
-//     /// Set to true after first GPS fix is received. Until then, GPS stays at Best accuracy.
-//     /// Reset on every startBackgroundTracking call (app launch / relaunch).
-//     private var hasReceivedFirstGPSFix = false
-
 //     public func startBackgroundTracking() {
-//         // Allow re-calling on app relaunch from terminated state
-//         if isBackgroundTrackingStarted {
-//             // Re-entry: just ensure GPS is running, don't re-register everything
-//             locationManager.startUpdatingLocation()
-//             print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
-//             return
-//         }
-//         isBackgroundTrackingStarted = true
-//         hasReceivedFirstGPSFix = false
-//         // Start GPS at BEST accuracy — need first fix before downgrading
+//         // Start GPS — NEVER stops (keeps app alive in background)
 //         locationManager.allowsBackgroundLocationUpdates = true
 //         locationManager.pausesLocationUpdatesAutomatically = false
-//         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-//         locationManager.distanceFilter = kCLDistanceFilterNone
 //         locationManager.startUpdatingLocation()
 //         locationManager.startMonitoringSignificantLocationChanges()
 //         locationManager.startMonitoringVisits()
@@ -1495,16 +1467,6 @@
 
 //         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
-//         // First GPS fix received — allow adaptLocationAccuracy to downgrade
-//         if !hasReceivedFirstGPSFix {
-//             hasReceivedFirstGPSFix = true
-//             print("📡 TripTracker First GPS fix received — adaptLocationAccuracy now active")
-//             // If not tracking and no vehicle speed, downgrade to low-power now
-//             if !isTracking && speed < vehicleThreshold {
-//                 adaptLocationAccuracy(for: lastMotionState)
-//             }
-//         }
-
 //         // ── Auto-trip: evaluate start/end based on GPS speed ──
 //         evaluateAutoTripFromGPS(speed: speed)
 
@@ -1683,8 +1645,19 @@
 //     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
 //         switch manager.authorizationStatus {
 //         case .authorizedAlways, .authorizedWhenInUse:
-//             print("✅ TripTracker Location permission granted")
+//             print("✅ TripTracker Location permission granted — restarting GPS")
+//             // Permission just granted (possibly from Ionic settings flow).
+//             // Must fully restart GPS — previous startUpdatingLocation() calls
+//             // were ignored by iOS because permission wasn't granted yet.
+//             locationManager.desiredAccuracy = kCLLocationAccuracyBest
+//             locationManager.distanceFilter = kCLDistanceFilterNone
+//             locationManager.allowsBackgroundLocationUpdates = true
+//             locationManager.pausesLocationUpdatesAutomatically = false
 //             locationManager.startUpdatingLocation()
+//             locationManager.startMonitoringSignificantLocationChanges()
+//             locationManager.startMonitoringVisits()
+//             // Re-start activity monitor if not already running
+//             startActivityMonitor()
 //         case .denied, .restricted:
 //             print("❌ TripTracker Location permission denied")
 //         case .notDetermined:

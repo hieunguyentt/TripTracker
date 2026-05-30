@@ -1,34 +1,34 @@
-//
-//  LocationTrackingService.swift
-//  TripTracker
-//
-//  THREE-TIER TRACKING RULE:
-//
-//    State = Still / on table    speed < 0.5 m/s   →  source = Sensors
-//    State = Walking / slow      0.5 ≤ speed < 6   →  source = Sensors
-//    State = Vehicle             speed ≥ 6 m/s     →  source = GPS
-//
-//  AUTO-TRIP:
-//    Auto-start:  speed ≥ 6 m/s OR CMMotionActivity = automotive
-//    Auto-end:    speed stays below 6 m/s for autoEndStillnessSecs (default 5 min)
-//
-//  SAVE FREQUENCY:
-//    still / on table  →  every 15 minutes (timer-based, 900 s)
-//    walking / slow    →  every 1 minute   (timer-based, 60 s)
-//    vehicle           →  every 30 metres  (distance-based, no timer)
-//
-//  GPS role:
-//    1. Calibrate sensor dead-reckoning baseline when accuracy <= 50 m
-//    2. Save location when speed >= 6 m/s and device has moved >= 30 m
-//
-//  Sensors role:
-//    1. CMMotionActivity + accelerometer detect movement / stillness
-//    2. CMPedometer estimates walking speed
-//    3. Dead-reckoning projects new coordinates when walking
-//    4. Periodic timer saves position when still or walking
-//
-//  Network (WiFi / Cell) is NOT used for positioning.
-//
+// //
+// //  LocationTrackingService.swift
+// //  TripTracker
+// //
+// //  THREE-TIER TRACKING RULE:
+// //
+// //    State = Still / on table    speed < 0.5 m/s   →  source = Sensors
+// //    State = Walking / slow      0.5 ≤ speed < 6   →  source = Sensors
+// //    State = Vehicle             speed ≥ 6 m/s     →  source = GPS
+// //
+// //  AUTO-TRIP:
+// //    Auto-start:  speed ≥ 6 m/s OR CMMotionActivity = automotive
+// //    Auto-end:    speed stays below 6 m/s for autoEndStillnessSecs (default 5 min)
+// //
+// //  SAVE FREQUENCY:
+// //    still / on table  →  every 15 minutes (timer-based, 900 s)
+// //    walking / slow    →  every 1 minute   (timer-based, 60 s)
+// //    vehicle           →  every 30 metres  (distance-based, no timer)
+// //
+// //  GPS role:
+// //    1. Calibrate sensor dead-reckoning baseline when accuracy <= 50 m
+// //    2. Save location when speed >= 6 m/s and device has moved >= 30 m
+// //
+// //  Sensors role:
+// //    1. CMMotionActivity + accelerometer detect movement / stillness
+// //    2. CMPedometer estimates walking speed
+// //    3. Dead-reckoning projects new coordinates when walking
+// //    4. Periodic timer saves position when still or walking
+// //
+// //  Network (WiFi / Cell) is NOT used for positioning.
+// //
 
 import Foundation
 import CoreLocation
@@ -266,6 +266,14 @@ public class LocationTrackingService: NSObject {
             return
         }
 
+        // Don't downgrade GPS until we've received at least one fix.
+        // First install or after terminated: GPS needs to warm up and deliver a fix
+        // before we can assess motion state. Only upgrading to .automotive is allowed.
+        if !hasReceivedFirstGPSFix && state != .automotive {
+            print("📡 TripTracker adaptLocationAccuracy(\(state.rawValue)) SKIPPED — waiting for first GPS fix")
+            return
+        }
+
         // ⚠️ CRITICAL: NEVER call stopUpdatingLocation().
         // GPS must always be running (even at low accuracy) so iOS keeps the
         // app alive in background. Stopping GPS = iOS kills the app.
@@ -293,8 +301,12 @@ public class LocationTrackingService: NSObject {
                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
             } else {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
-                // Keep GPS at low-power — don't stop.
-                // CMMotionActivity will upgrade to Best when automotive detected.
+                // Keep GPS alive — MUST keep receiving callbacks.
+                // CMMotionActivity may fail to detect movement on some devices.
+                // Using kCLDistanceFilterNone ensures didUpdateLocations always fires
+                // so evaluateAutoTripFromGPS can detect vehicle speed.
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
@@ -352,10 +364,26 @@ public class LocationTrackingService: NSObject {
         print("✅ TripTracker Terminal tracking started (GPS always-on + significant changes + visits)")
     }
 
+    private var isBackgroundTrackingStarted = false
+    /// Set to true after first GPS fix is received. Until then, GPS stays at Best accuracy.
+    /// Reset on every startBackgroundTracking call (app launch / relaunch).
+    private var hasReceivedFirstGPSFix = false
+
     public func startBackgroundTracking() {
-        // Start GPS — NEVER stops (keeps app alive in background)
+        // Allow re-calling on app relaunch from terminated state
+        if isBackgroundTrackingStarted {
+            // Re-entry: just ensure GPS is running, don't re-register everything
+            locationManager.startUpdatingLocation()
+            print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
+            return
+        }
+        isBackgroundTrackingStarted = true
+        hasReceivedFirstGPSFix = false
+        // Start GPS at BEST accuracy — need first fix before downgrading
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()
@@ -1467,6 +1495,16 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
+        // First GPS fix received — allow adaptLocationAccuracy to downgrade
+        if !hasReceivedFirstGPSFix {
+            hasReceivedFirstGPSFix = true
+            print("📡 TripTracker First GPS fix received — adaptLocationAccuracy now active")
+            // If not tracking and no vehicle speed, downgrade to low-power now
+            if !isTracking && speed < vehicleThreshold {
+                adaptLocationAccuracy(for: lastMotionState)
+            }
+        }
+
         // ── Auto-trip: evaluate start/end based on GPS speed ──
         evaluateAutoTripFromGPS(speed: speed)
 
@@ -1649,6 +1687,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             // Permission just granted (possibly from Ionic settings flow).
             // Must fully restart GPS — previous startUpdatingLocation() calls
             // were ignored by iOS because permission wasn't granted yet.
+            hasReceivedFirstGPSFix = false
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter = kCLDistanceFilterNone
             locationManager.allowsBackgroundLocationUpdates = true
