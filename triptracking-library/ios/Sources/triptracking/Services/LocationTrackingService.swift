@@ -295,6 +295,8 @@ public class LocationTrackingService: NSObject {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
                 // Keep GPS at low-power — don't stop.
                 // CMMotionActivity will upgrade to Best when automotive detected.
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = 10
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
@@ -356,6 +358,8 @@ public class LocationTrackingService: NSObject {
         // Start GPS — NEVER stops (keeps app alive in background)
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        locationManager.distanceFilter  = 10
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()
@@ -1668,13 +1672,13 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         // Distance gate: only send ping if moved >= saveDistanceVehicleM (80m) since last ping.
         // This prevents excessive API calls while keeping GPS at full rate for speed detection.
-        if let lastPinged = lastPingedLocation {
-            let distSinceLastPing = clLoc.distance(from: lastPinged)
-            if distSinceLastPing < saveDistanceVehicleM {
-                print("📡 TripTracker Ping skipped — only moved \(String(format:"%.1f", distSinceLastPing))m since last ping")
-                return  // Too close to last ping — skip
-            }
-        }
+        // if let lastPinged = lastPingedLocation {
+        //     let distSinceLastPing = clLoc.distance(from: lastPinged)
+        //     if distSinceLastPing < saveDistanceVehicleM {
+        //         print("📡 TripTracker Ping skipped — only moved \(String(format:"%.1f", distSinceLastPing))m since last ping")
+        //         return  // Too close to last ping — skip
+        //     }
+        // }
         lastPingedLocation = clLoc
 
         // Clamp speed — CLLocation.speed can be -1 when invalid
