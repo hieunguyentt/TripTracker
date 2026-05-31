@@ -106,8 +106,9 @@ public final class TripTrackerSDK {
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
-        // ALWAYS start the service — it requests permission internally
-        self.stopLocationTracking()  // ensure any existing tracking is stopped before starting fresh
+                // ALWAYS start the service — it requests permission internally
+        LocationTrackingService.shared.startBackgroundTracking()
+
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
@@ -133,11 +134,6 @@ public final class TripTrackerSDK {
         }
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
-
-        // Auto-start GPS after 10s — gives Ionic time to set config + permission
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
-            TripTrackerSDK.startLocationTracking()
-        }
     }
 
     // ── Permission ──
@@ -273,18 +269,8 @@ public final class TripTrackerSDK {
     /// Call this from Ionic after confirming permission is granted.
     /// Forces a clean GPS restart to ensure callbacks are delivered.
     public static func startLocationTracking() {
-        let svc = LocationTrackingService.shared
-
-        // Verify permission
-        let status = svc.locationManager.authorizationStatus
-        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
-            print("❌ TripTracker startLocationTracking — permission not granted (status: \(status.rawValue))")
-            return
-        }
-
         // Force clean restart: stop → reset → start
-        svc.locationManager.stopUpdatingLocation()
-        svc.startBackgroundTracking()
+        LocationTrackingService.shared.startBackgroundTracking()
         print("✅ TripTracker startLocationTracking — GPS restarted after permission granted")
     }
 

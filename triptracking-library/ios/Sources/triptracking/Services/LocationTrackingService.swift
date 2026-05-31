@@ -1645,19 +1645,18 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            print("✅ TripTracker Location permission granted — restarting GPS")
-            // Permission just granted (possibly from Ionic settings flow).
-            // Must fully restart GPS — previous startUpdatingLocation() calls
-            // were ignored by iOS because permission wasn't granted yet.
-            locationManager.desiredAccuracy = kCLLocationAccuracyBest
-            locationManager.distanceFilter = kCLDistanceFilterNone
-            locationManager.allowsBackgroundLocationUpdates = true
-            locationManager.pausesLocationUpdatesAutomatically = false
-            locationManager.startUpdatingLocation()
-            locationManager.startMonitoringSignificantLocationChanges()
-            locationManager.startMonitoringVisits()
-            // Re-start activity monitor if not already running
-            startActivityMonitor()
+            print("✅ TripTracker Location permission granted — force restarting GPS")
+            // Permission just granted (possibly from Ionic requestLocationAuthorization).
+            // Must force stop → restart to clear stale CLLocationManager state.
+            // Previous startUpdatingLocation() calls were ignored when permission wasn't granted.
+            hasReceivedFirstGPSFix = false
+            isBackgroundTrackingStarted = false
+            locationManager.stopUpdatingLocation()
+            locationManager.stopMonitoringSignificantLocationChanges()
+            locationManager.stopMonitoringVisits()
+            
+            // Clean restart
+            startBackgroundTracking()
         case .denied, .restricted:
             print("❌ TripTracker Location permission denied")
         case .notDetermined:
