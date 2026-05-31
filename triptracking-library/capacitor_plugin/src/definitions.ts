@@ -59,20 +59,6 @@ export interface TripTrackerPlugin {
    */
   stopTracking(): Promise<{ stopped: boolean }>;
 
-  /**
-   * Start GPS location updates. Call AFTER user has granted "Always" permission.
-   * Forces a clean GPS restart to ensure callbacks are delivered.
-   * Use this when Ionic confirms permission is granted (e.g. after settings page).
-   */
-  startLocationTracking(): Promise<{ started: boolean }>;
-
-  /**
-   * Stop all GPS location updates completely.
-   * Stops GPS, significant location changes, visits.
-   * Call when user has NOT granted permission, or to fully pause GPS.
-   */
-  stopLocationTracking(): Promise<{ stopped: boolean }>;
-
   // ── Native Pages ──
 
   /** Open the full native Settings page (sliders, toggles, web monitor, CarPlay). */

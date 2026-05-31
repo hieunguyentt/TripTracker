@@ -1645,16 +1645,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            print("✅ TripTracker Location permission granted — force restarting GPS")
-            // Permission just granted (possibly from Ionic requestLocationAuthorization).
-            // Must force stop → restart to clear stale CLLocationManager state.
-            // Previous startUpdatingLocation() calls were ignored when permission wasn't granted.
-            locationManager.stopUpdatingLocation()
-            locationManager.stopMonitoringSignificantLocationChanges()
-            locationManager.stopMonitoringVisits()
-            
-            // Clean restart
-            startBackgroundTracking()
+            print("✅ TripTracker Location permission granted")
+            locationManager.startUpdatingLocation()
         case .denied, .restricted:
             print("❌ TripTracker Location permission denied")
         case .notDetermined:
@@ -1676,13 +1668,13 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         // Distance gate: only send ping if moved >= saveDistanceVehicleM (80m) since last ping.
         // This prevents excessive API calls while keeping GPS at full rate for speed detection.
-        // if let lastPinged = lastPingedLocation {
-        //     let distSinceLastPing = clLoc.distance(from: lastPinged)
-        //     if distSinceLastPing < saveDistanceVehicleM {
-        //         print("📡 TripTracker Ping skipped — only moved \(String(format:"%.1f", distSinceLastPing))m since last ping")
-        //         return  // Too close to last ping — skip
-        //     }
-        // }
+        if let lastPinged = lastPingedLocation {
+            let distSinceLastPing = clLoc.distance(from: lastPinged)
+            if distSinceLastPing < saveDistanceVehicleM {
+                print("📡 TripTracker Ping skipped — only moved \(String(format:"%.1f", distSinceLastPing))m since last ping")
+                return  // Too close to last ping — skip
+            }
+        }
         lastPingedLocation = clLoc
 
         // Clamp speed — CLLocation.speed can be -1 when invalid

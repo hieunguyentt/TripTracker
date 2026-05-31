@@ -85,29 +85,32 @@ public final class TripTrackerSDK {
         webServer?.stop()
         webServer = nil
 
-
-        if(_initialized) {
-            print("⚠️ TripTracker already initialized — re-applying config")
-            return
-        }else{
-            // Restore API config from UserDefaults (in case app was killed + relaunched)
-            restoreAPIConfigFromDefaults()
-            print("📡 TripTracker Initializing — applying config")
-            if(!config.userId.isEmpty) {
+        guard !_initialized else {
+            // Re-initialized — only apply if config has real API values
+            if !config.userId.isEmpty && !config.pingURL.isEmpty {
                 applyConfig(config)
-                print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
             } else {
-                print("📡 TripTracker Initializing — incoming config has empty userId, using restored config from UserDefaults")
+                print("📡 TripTracker Re-init skipped — incoming config has empty API values (restored config preserved)")
             }
+            return
+        }
+        // Restore API config from UserDefaults (in case app was killed + relaunched)
+        restoreAPIConfigFromDefaults()
+
+        if(!config.userId.isEmpty) {
+            applyConfig(config)
+            print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
+        } else {
+            print("📡 TripTracker Initializing — incoming config has empty userId, using restored config from UserDefaults")
         }
         LogManager.shared.start()
 
-
+        
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
         // ALWAYS start the service — it requests permission internally
-        self.stopLocationTracking()  // ensure any existing tracking is stopped before starting fresh
+        LocationTrackingService.shared.startBackgroundTracking()
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
@@ -129,31 +132,14 @@ public final class TripTrackerSDK {
             print("⚠️ TripTracker Location permission not granted — requesting…")
             permissionDelegate = LocationPermissionDelegate()
         } else {
-            print("✅ TripTracker Location permission already granted — starting GPS")
-            TripTrackerSDK.startLocationTracking()
+            print("✅ TripTracker Location permission already granted — tracking active")
         }
+
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
-
-        // Safety: check permission again after 5s, 15s, 30s
-        // Covers the case where Ionic grants permission after initialize
-        for delay in [5.0, 15.0, 30.0] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                if TripTrackerSDK.hasLocationPermission{
-                    print("📡 TripTracker Permission check at \(Int(delay))s — granted but no GPS fix → starting GPS")
-                    TripTrackerSDK.startLocationTracking()
-                }
-            }
-        }
     }
 
     // ── Permission ──
-    /// Called when permission is granted (from delegate or plugin)
-    public static func requestPermissionGranted() {
-        LocationTrackingService.shared.startBackgroundTracking()
-        print("✅ TripTracker requestPermissionGranted called — tracking activated (ensure permissionDelegate is set to observe permission changes if permission not yet granted)")
-    }
-
     public static var hasLocationPermission: Bool {
         let status = CLLocationManager().authorizationStatus
         return status == .authorizedAlways || status == .authorizedWhenInUse
@@ -170,7 +156,6 @@ public final class TripTrackerSDK {
 
     // ── Apply config to UserDefaults + live services ──
     public static func applyConfig(_ config: TripTrackerConfig) {
-    
         let ud = UserDefaults.standard
         ud.set(config.saveIntervalMinutes * 60.0, forKey: "tt_saveIntervalSecs")
         ud.set(config.saveDistanceMeters, forKey: "tt_saveDistanceVehicleM")
@@ -227,9 +212,9 @@ public final class TripTrackerSDK {
             ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
             ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
             ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
-            print("📡 TripTracker API config saved to UserDefaults — userId=\(config.userId)")
+            print("📡 API config saved to UserDefaults — userId=\(config.userId)")
         } else {
-            print("📡 TripTracker API config NOT overwritten — incoming config has empty pingURL/userId (restored config preserved)")
+            print("📡 API config NOT overwritten — incoming config has empty pingURL/userId (restored config preserved)")
         }
 
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
@@ -264,44 +249,6 @@ public final class TripTrackerSDK {
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
-
-    /// Stop all location updates. Call when user has NOT granted permission yet,
-    /// or when you want to pause GPS completely.
-    /// GPS, significant location changes, visits, and activity monitor all stop.
-    public static func stopLocationTracking() {
-        let svc = LocationTrackingService.shared
-        svc.locationManager.stopUpdatingLocation()
-        svc.locationManager.stopMonitoringSignificantLocationChanges()
-        svc.locationManager.stopMonitoringVisits()
-        print("🛑 TripTracker stopLocationTracking — all GPS updates stopped")
-    }
-
-    /// Start location tracking after user has granted "Always" permission.
-    /// Call this from Ionic after confirming permission is granted.
-    /// Forces a clean GPS restart to ensure callbacks are delivered.
-    public static func startLocationTracking() {
-        DispatchQueue.main.async {
-            let svc = LocationTrackingService.shared
-
-            // Verify permission
-            let status = svc.locationManager.authorizationStatus
-            guard status == .authorizedAlways || status == .authorizedWhenInUse else {
-                print("❌ TripTracker startLocationTracking — permission not granted (status: \(status.rawValue))")
-                return
-            }
-
-            // Force complete reset
-            svc.locationManager.stopUpdatingLocation()
-            svc.locationManager.stopMonitoringSignificantLocationChanges()
-            svc.locationManager.stopMonitoringVisits()
-
-            // Re-set delegate (in case it was lost or set from wrong thread)
-            svc.locationManager.delegate = svc
-
-            svc.startBackgroundTracking()
-            print("✅ TripTracker startLocationTracking — GPS force restarted on main thread")
-        }
-    }
 
     public static func willEnterForeground() {
         let svc = LocationTrackingService.shared
