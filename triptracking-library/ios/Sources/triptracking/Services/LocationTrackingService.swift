@@ -231,9 +231,8 @@ public class LocationTrackingService: NSObject {
     /// Called when app returns to foreground (e.g. after user changes permission in Settings)
     @objc private func appWillEnterForeground() {
         let status = locationManager.authorizationStatus
-        if (status == .authorizedAlways || status == .authorizedWhenInUse) && !hasReceivedFirstGPSFix {
+        if (status == .authorizedAlways || status == .authorizedWhenInUse) {
             print("📡 TripTracker appWillEnterForeground — permission granted but no GPS fix yet → restarting")
-            isBackgroundTrackingStarted = false
             locationManager.stopUpdatingLocation()
             startBackgroundTracking()
         }
