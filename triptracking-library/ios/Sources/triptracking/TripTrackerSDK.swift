@@ -110,7 +110,7 @@ public final class TripTrackerSDK {
         DatabaseManager.shared.initializeDatabase()
 
         // ALWAYS start the service — it requests permission internally
-        LocationTrackingService.shared.startBackgroundTracking()
+        // LocationTrackingService.shared.startBackgroundTracking()
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
@@ -144,7 +144,7 @@ public final class TripTrackerSDK {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 if TripTrackerSDK.hasLocationPermission {
                     print("📡 TripTracker Permission check at \(Int(delay))s — granted but no GPS fix → starting GPS")
-                    TripTrackerSDK.startLocationTracking()
+                    LocationTrackingService.shared.startBackgroundTracking()
                 }
             }
         }
