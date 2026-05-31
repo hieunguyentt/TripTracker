@@ -133,6 +133,10 @@ public final class TripTrackerSDK {
         }
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { [weak self] in
+                    self.startLocationTracking()
+                }
     }
 
     // ── Permission ──
