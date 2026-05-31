@@ -106,8 +106,13 @@ public final class TripTrackerSDK {
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
-                // ALWAYS start the service — it requests permission internally
-        LocationTrackingService.shared.startBackgroundTracking()
+        // ALWAYS start the service — it requests permission internally
+        const perm = await TripTracker.hasLocationPermission();
+        if (perm.granted) {
+            LocationTrackingService.shared.startBackgroundTracking()
+            console.log('✅ TripTracker started location tracking');
+        }
+        
 
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
