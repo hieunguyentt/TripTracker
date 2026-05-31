@@ -142,8 +142,7 @@ public final class TripTrackerSDK {
         // Covers the case where Ionic grants permission after initialize
         for delay in [5.0, 15.0, 30.0] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                if TripTrackerSDK.hasLocationPermission
-                    && !LocationTrackingService.shared.hasReceivedFirstGPSFix {
+                if TripTrackerSDK.hasLocationPermission {
                     print("📡 TripTracker Permission check at \(Int(delay))s — granted but no GPS fix → starting GPS")
                     TripTrackerSDK.startLocationTracking()
                 }
