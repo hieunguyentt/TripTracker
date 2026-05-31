@@ -85,8 +85,6 @@ public final class TripTrackerSDK {
         webServer?.stop()
         webServer = nil
 
-        // ALWAYS start the service — it requests permission internally
-        LocationTrackingService.shared.startBackgroundTracking()
 
         if(_initialized) {
             print("⚠️ TripTracker already initialized — re-applying config")
@@ -107,6 +105,16 @@ public final class TripTrackerSDK {
 
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
+
+        // ALWAYS start the service — it requests permission internally
+        self.stopLocationTracking()  // ensure any existing tracking is stopped before starting fresh
+
+        _initialized = true
+        print("✅ TripTracker TripTrackerSDK initialized")
+    }
+
+    public static func initializeTripTrackerLocation(){
+        self.startLocationTracking()
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
@@ -130,9 +138,6 @@ public final class TripTrackerSDK {
         } else {
             print("✅ TripTracker Location permission already granted — tracking active")
         }
-
-        _initialized = true
-        print("✅ TripTracker TripTrackerSDK initialized")
     }
 
     // ── Permission ──
@@ -252,6 +257,40 @@ public final class TripTrackerSDK {
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
+
+    /// Stop all location updates. Call when user has NOT granted permission yet,
+    /// or when you want to pause GPS completely.
+    /// GPS, significant location changes, visits, and activity monitor all stop.
+    public static func stopLocationTracking() {
+        let svc = LocationTrackingService.shared
+        svc.locationManager.stopUpdatingLocation()
+        svc.locationManager.stopMonitoringSignificantLocationChanges()
+        svc.locationManager.stopMonitoringVisits()
+        svc.isBackgroundTrackingStarted = false
+        svc.hasReceivedFirstGPSFix = false
+        print("🛑 TripTracker stopLocationTracking — all GPS updates stopped")
+    }
+
+    /// Start location tracking after user has granted "Always" permission.
+    /// Call this from Ionic after confirming permission is granted.
+    /// Forces a clean GPS restart to ensure callbacks are delivered.
+    public static func startLocationTracking() {
+        let svc = LocationTrackingService.shared
+
+        // Verify permission
+        let status = svc.locationManager.authorizationStatus
+        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
+            print("❌ TripTracker startLocationTracking — permission not granted (status: \(status.rawValue))")
+            return
+        }
+
+        // Force clean restart: stop → reset → start
+        svc.locationManager.stopUpdatingLocation()
+        svc.isBackgroundTrackingStarted = false
+        svc.hasReceivedFirstGPSFix = false
+        svc.startBackgroundTracking()
+        print("✅ TripTracker startLocationTracking — GPS restarted after permission granted")
+    }
 
     public static func willEnterForeground() {
         let svc = LocationTrackingService.shared

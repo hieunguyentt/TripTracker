@@ -178,6 +178,18 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["stopped": true])
     }
 
+    /// Start GPS location updates. Call AFTER user grants "Always" permission.
+    @objc func startLocationTracking(_ call: CAPPluginCall) {
+        TripTrackerSDK.startLocationTracking()
+        call.resolve(["started": true])
+    }
+
+    /// Stop all GPS location updates. Call when permission not granted or to pause GPS.
+    @objc func stopLocationTracking(_ call: CAPPluginCall) {
+        TripTrackerSDK.stopLocationTracking()
+        call.resolve(["stopped": true])
+    }
+
     private static func hasLocationPermissionNative() -> Bool {
         let status = CLLocationManager().authorizationStatus
         return status == .authorizedAlways || status == .authorizedWhenInUse
