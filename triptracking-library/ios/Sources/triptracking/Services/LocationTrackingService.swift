@@ -354,13 +354,13 @@ public class LocationTrackingService: NSObject {
 
     public func startBackgroundTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
+        // locationManager.allowsBackgroundLocationUpdates = true
+        // locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()
+        // locationManager.startMonitoringSignificantLocationChanges()
+        // locationManager.startMonitoringVisits()
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
