@@ -365,18 +365,30 @@ public final class TripTrackerAPIService {
             try {
                 JSONObject body = new JSONObject();
                 body.put("user_Id", userId);
+                body.put("route_Id", routeId);
+                body.put("os_Info", osInfo);
                 body.put("timestamp", isoNow());
                 body.put("latitude", location.getLatitude());
                 body.put("longitude", location.getLongitude());
 
-                boolean ok = post(endURL, body);
+                Log.d(TAG, "📡 Sending trip-end: " + body.toString());
+
+                // Retry up to 3 times with 2s delay
+                boolean ok = false;
+                for (int attempt = 1; attempt <= 3; attempt++) {
+                    ok = post(endURL, body);
+                    if (ok) break;
+                    Log.d(TAG, "Trip-end attempt " + attempt + "/3 failed — retrying in 2s...");
+                    try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+                }
+
                 includeVehicleId = false;
 
                 if (ok) {
                     Log.d(TAG, "Trip-end OK");
                     if (!pendingQueue.isEmpty()) flushQueue();
                 } else {
-                    Log.d(TAG, "Trip-end FAIL — queued for retry");
+                    Log.d(TAG, "Trip-end FAIL after 3 attempts — queued for retry");
                     enqueue(endURL, body);
                 }
             } catch (Exception e) {
@@ -412,7 +424,26 @@ public final class TripTrackerAPIService {
             os.flush(); os.close();
 
             int code = conn.getResponseCode();
-            return code >= 200 && code < 300;
+            if (code >= 200 && code < 300) {
+                return true;
+            } else {
+                // Read error response for debugging
+                try {
+                    java.io.InputStream errStream = conn.getErrorStream();
+                    if (errStream != null) {
+                        java.io.BufferedReader errReader = new java.io.BufferedReader(new java.io.InputStreamReader(errStream));
+                        StringBuilder errBody = new StringBuilder();
+                        String errLine;
+                        while ((errLine = errReader.readLine()) != null) errBody.append(errLine);
+                        Log.e(TAG, "POST " + urlStr + " → HTTP " + code + ": " + errBody.toString());
+                    } else {
+                        Log.e(TAG, "POST " + urlStr + " → HTTP " + code);
+                    }
+                } catch (Exception ignored) {
+                    Log.e(TAG, "POST " + urlStr + " → HTTP " + code);
+                }
+                return false;
+            }
         } catch (Exception e) {
             Log.e(TAG, "POST error: " + e.getMessage());
             return false;

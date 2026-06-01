@@ -1,6 +1,6 @@
 {
   "name": "capacitor-trip-tracker",
-  "version": "2.0.48",
+  "version": "2.0.49",
   "description": "Capacitor plugin for TripTracker — GPS trip tracking, geofencing, voice feedback. iOS + Android.",
   "main": "triptracking-library/capacitor_plugin/dist/plugin.js",
   "module": "triptracking-library/capacitor_plugin/dist/esm/index.js",
