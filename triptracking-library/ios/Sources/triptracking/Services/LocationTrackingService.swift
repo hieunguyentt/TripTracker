@@ -1677,12 +1677,19 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            print("✅ TripTracker Location permission granted — restarting GPS")
-            TripTrackerSDK.startLocationTracking()
+            print("✅ TripTracker Location permission granted")
+            // Don't call startLocationTracking() here — it creates a new CLLocationManager
+            // which triggers this callback again → infinite loop!
+            // GPS is already started by startLocationTracking() or startBackgroundTracking().
+            // Just ensure GPS is running on the current manager.
+            if isBackgroundTrackingStarted && !hasReceivedFirstGPSFix {
+                manager.startUpdatingLocation()
+                print("📡 TripTracker Auth callback — ensuring GPS is running")
+            }
         case .denied, .restricted:
             print("❌ TripTracker Location permission denied")
         case .notDetermined:
-            locationManager.requestAlwaysAuthorization()
+            manager.requestAlwaysAuthorization()
         @unknown default:
             break
         }
