@@ -145,6 +145,8 @@ export interface TripTrackerPlugin {
         count?: number;
         days?: number;
     }>;
+    /** Write a message to TripTracker native log file */
+    writeLog(options: { message: string }): Promise<void>;
 }
 export interface TrackingStatus {
     isTracking: boolean;
