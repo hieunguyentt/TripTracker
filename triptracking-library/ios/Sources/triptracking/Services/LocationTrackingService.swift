@@ -56,7 +56,7 @@ public class LocationTrackingService: NSObject {
     weak var delegate: LocationUpdateDelegate?
 
     // MARK: - Core managers
-    public let locationManager: CLLocationManager = CLLocationManager()
+    public var locationManager: CLLocationManager = CLLocationManager()
     
     /// Exposed for GeofenceManager to register region monitoring on this
     /// CLLocationManager — the one with "Always" auth + background modes.
@@ -72,6 +72,11 @@ public class LocationTrackingService: NSObject {
     private var tripStartTime: Date?
     private var totalDistance: Double = 0.0
     private var stepCount: Int        = 0
+
+    /// Prevents multiple startBackgroundTracking calls
+    public var isBackgroundTrackingStarted = false
+    /// Set to true after first GPS fix. Until then, GPS stays at Best accuracy.
+    public var hasReceivedFirstGPSFix = false
 
     // MARK: - Location state
     private var lastGPSLocation:      CLLocation?   // latest raw GPS fix
@@ -122,7 +127,7 @@ public class LocationTrackingService: NSObject {
     /// Consecutive GPS fixes at vehicle speed. Must reach threshold before auto-start.
     private var consecutiveVehicleSpeedCount: Int = 0
     /// Number of consecutive vehicle-speed readings required to auto-start a trip.
-    private let requiredConsecutiveVehicleFixes: Int = 1
+    private let requiredConsecutiveVehicleFixes: Int = 2
 
     // Speed thresholds — internal so SettingsViewController can read/write
     public var vehicleThreshold:    Float = 3.0 {  // m/s — at or above → GPS saves
@@ -218,6 +223,22 @@ public class LocationTrackingService: NSObject {
         loadPersistedSettings()
         setupLocationManager()
         setupMotionManager()
+
+        // When app returns from Settings → check if permission changed → restart GPS
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    @objc private func appWillEnterForeground() {
+        let status = locationManager.authorizationStatus
+        if (status == .authorizedAlways || status == .authorizedWhenInUse) && !hasReceivedFirstGPSFix {
+            print("📡 TripTracker appWillEnterForeground — permission granted but no GPS fix → restarting")
+            TripTrackerSDK.startLocationTracking()
+        }
     }
 
     private func loadPersistedSettings() {
@@ -260,9 +281,15 @@ public class LocationTrackingService: NSObject {
     //  vehicle    → no filter + Best — maximum resolution for road tracking
     //
     // Must be called on the main thread (CLLocationManager is not thread-safe).
-    private func adaptLocationAccuracy(for state: MotionState) {
+    public func adaptLocationAccuracy(for state: MotionState) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { self.adaptLocationAccuracy(for: state) }
+            return
+        }
+
+        // Don't downgrade GPS until first fix received
+        if !hasReceivedFirstGPSFix && state != .automotive {
+            print("📡 TripTracker adaptLocationAccuracy(\(state.rawValue)) SKIPPED — waiting for first GPS fix")
             return
         }
 
@@ -353,35 +380,29 @@ public class LocationTrackingService: NSObject {
     }
 
     public func startBackgroundTracking() {
-        // Start GPS — NEVER stops (keeps app alive in background)
-        // locationManager.allowsBackgroundLocationUpdates = true
-        // locationManager.pausesLocationUpdatesAutomatically = false
+        if isBackgroundTrackingStarted {
+            locationManager.startUpdatingLocation()
+            print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
+            return
+        }
+        isBackgroundTrackingStarted = true
+        hasReceivedFirstGPSFix = false
+
+        // Force stop → restart to clear stale state
+        locationManager.stopUpdatingLocation()
+
+        // Start GPS at BEST accuracy — need first fix before downgrading
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
-        // locationManager.startMonitoringSignificantLocationChanges()
-        // locationManager.startMonitoringVisits()
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
-        print("✅ TripTracker Background tracking started (GPS always-on + significant changes + visits)")
-
-        // Send one initial ping with current GPS location when app opens
-        // so server knows device position even before a trip starts
-        // DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-        //     guard let self = self else { return }
-        //     if let loc = self.locationManager.location, loc.horizontalAccuracy <= 50 {
-        //         let clLoc = loc
-        //         let safeSpeed = max(0, Float(clLoc.speed))
-        //         TripTrackerAPIService.shared.sendPing(
-        //             location: clLoc,
-        //             isMoving: safeSpeed > 0,
-        //             speed: safeSpeed,
-        //             activityType: "still"
-        //         )
-        //         print("📡 TripTracker Initial ping sent on app open — \(clLoc.coordinate.latitude),\(clLoc.coordinate.longitude)")
-        //     }
-        // }
+        print("✅ TripTracker Background tracking started (GPS Best until first fix)")
     }
 
     public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
@@ -720,7 +741,7 @@ public class LocationTrackingService: NSObject {
         altimeter.stopRelativeAltitudeUpdates()
     }
 
-    private func startPedometer() {
+    func startPedometer() {
         guard CMPedometer.isStepCountingAvailable() else { return }
         pedometer.startUpdates(from: Date()) { [weak self] data, _ in
             guard let self = self, let data = data else { return }
@@ -730,7 +751,7 @@ public class LocationTrackingService: NSObject {
         }
     }
 
-    private func startActivityMonitor() {
+    func startActivityMonitor() {
         guard CMMotionActivityManager.isActivityAvailable() else { return }
         activityManager.startActivityUpdates(to: OperationQueue()) { [weak self] activity in
             guard let self = self, let activity = activity else { return }
@@ -967,7 +988,7 @@ public class LocationTrackingService: NSObject {
     //   slow move < 6 m/s → 1-minute interval (saveIntervalSlowMs)
     //   vehicle >= 6 m/s  → skipped here; GPS distance-gate handles saves.
 
-    private func startPeriodicSaveTimer() {
+    func startPeriodicSaveTimer() {
         // Must run on main thread — Timer.scheduledTimer uses the current RunLoop.
         // If called from a background thread the timer silently never fires.
         if !Thread.isMainThread {
@@ -1126,22 +1147,22 @@ public class LocationTrackingService: NSObject {
             //     return
             // }
 
-            consecutiveVehicleSpeedCount += 1
+            // consecutiveVehicleSpeedCount += 1
 
             // Cancel auto-end if already tracking
             cancelAutoEndTimer()
 
             if !isTracking {
-                if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                // if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
-                    consecutiveVehicleSpeedCount = 0
-                } else {
+                    // consecutiveVehicleSpeedCount = 0
+                // } else {
                     print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
-                }
+                // }
             }
         } else {
             // ── Below vehicle threshold ──
-            consecutiveVehicleSpeedCount = 0
+            // consecutiveVehicleSpeedCount = 0
 
             if isTracking && autoEndTimer == nil {
                 // Speed dropped while trip active → start auto-end countdown.
@@ -1469,6 +1490,15 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
+        // First GPS fix — allow adaptLocationAccuracy to downgrade
+        if !hasReceivedFirstGPSFix {
+            hasReceivedFirstGPSFix = true
+            print("📡 TripTracker First GPS fix received — adaptLocationAccuracy now active")
+            if !isTracking && speed < vehicleThreshold {
+                adaptLocationAccuracy(for: lastMotionState)
+            }
+        }
+
         // ── Auto-trip: evaluate start/end based on GPS speed ──
         evaluateAutoTripFromGPS(speed: speed)
 
@@ -1647,8 +1677,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            print("✅ TripTracker Location permission granted")
-            locationManager.startUpdatingLocation()
+            print("✅ TripTracker Location permission granted — restarting GPS")
+            TripTrackerSDK.startLocationTracking()
         case .denied, .restricted:
             print("❌ TripTracker Location permission denied")
         case .notDetermined:

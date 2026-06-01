@@ -109,9 +109,10 @@ public final class TripTrackerSDK {
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
-        // ALWAYS start the service — it requests permission internally
-        // LocationTrackingService.shared.startBackgroundTracking()
-
+        // ALWAYS start the service — but GPS only starts if permission granted
+        // If permission not yet granted, GPS will start via startLocationTracking()
+        // when Ionic confirms permission or via retry timers below
+        
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
             if !wasAutoEnded { LocationTrackingService.shared.resumeTrip(id: info.id, startTimeMs: info.startTimeMs) }
@@ -127,12 +128,13 @@ public final class TripTrackerSDK {
         NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
-        // If permission not yet granted, request it and observe for changes
-        if !hasLocationPermission {
-            print("⚠️ TripTracker Location permission not granted — requesting…")
-            permissionDelegate = LocationPermissionDelegate()
+        // If permission already granted, start GPS immediately
+        if hasLocationPermission {
+            print("✅ TripTracker Location permission already granted — starting GPS")
+            TripTrackerSDK.startLocationTracking()
         } else {
-            print("✅ TripTracker Location permission already granted — tracking active")
+            print("⚠️ TripTracker Location permission not granted — waiting for Ionic to grant")
+            permissionDelegate = LocationPermissionDelegate()
         }
 
         _initialized = true
@@ -140,17 +142,15 @@ public final class TripTrackerSDK {
 
         // Safety: check permission again after 5s, 15s, 30s
         // Covers the case where Ionic grants permission after initialize
-        DispatchQueue.main.sync {
-                LocationTrackingService.shared.startBackgroundTracking()
+        for delay in [5.0, 15.0, 30.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if TripTrackerSDK.hasLocationPermission
+                    && !LocationTrackingService.shared.hasReceivedFirstGPSFix {
+                    print("📡 TripTracker Permission check at \(Int(delay))s — granted but no GPS fix → starting GPS")
+                    TripTrackerSDK.startLocationTracking()
+                }
+            }
         }
-        // for delay in [5.0, 15.0, 30.0] {
-        //     DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-        //         if TripTrackerSDK.hasLocationPermission {
-        //             print("📡 TripTracker Permission check at \(Int(delay))s — granted but no GPS fix → starting GPS")
-        //             LocationTrackingService.shared.startBackgroundTracking()
-        //         }
-        //     }
-        // }
     }
 
     // ── Permission ──
@@ -263,6 +263,72 @@ public final class TripTrackerSDK {
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
+
+    /// Stop all location updates. Call when user has NOT granted permission yet.
+    public static func stopLocationTracking() {
+        let svc = LocationTrackingService.shared
+        svc.locationManager.stopUpdatingLocation()
+        svc.locationManager.stopMonitoringSignificantLocationChanges()
+        svc.locationManager.stopMonitoringVisits()
+        svc.isBackgroundTrackingStarted = false
+        svc.hasReceivedFirstGPSFix = false
+        print("🛑 TripTracker stopLocationTracking — all GPS updates stopped")
+    }
+
+    /// Start location tracking after user has granted "Always" permission.
+    /// Creates a NEW CLLocationManager on main thread to clear stale state.
+    public static func startLocationTracking() {
+        // MUST run on main thread — CLLocationManager requires it
+        if !Thread.isMainThread {
+            DispatchQueue.main.sync {
+                startLocationTracking()
+            }
+            return
+        }
+
+        let svc = LocationTrackingService.shared
+
+        // Check permission using a fresh CLLocationManager (not the potentially stale one)
+        let tempManager = CLLocationManager()
+        let status = tempManager.authorizationStatus
+        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
+            print("❌ TripTracker startLocationTracking — permission not granted (status: \(status.rawValue))")
+            return
+        }
+
+        // 1. Kill old CLLocationManager completely
+        svc.locationManager.stopUpdatingLocation()
+        svc.locationManager.stopMonitoringSignificantLocationChanges()
+        svc.locationManager.stopMonitoringVisits()
+        svc.locationManager.delegate = nil
+
+        // 2. Create brand new CLLocationManager ON MAIN THREAD
+        let newManager = CLLocationManager()
+        newManager.delegate = svc
+        newManager.desiredAccuracy = kCLLocationAccuracyBest
+        newManager.distanceFilter = kCLDistanceFilterNone
+        newManager.allowsBackgroundLocationUpdates = true
+        newManager.pausesLocationUpdatesAutomatically = false
+        newManager.showsBackgroundLocationIndicator = false
+        svc.locationManager = newManager
+
+        // 3. Reset flags
+        svc.isBackgroundTrackingStarted = false
+        svc.hasReceivedFirstGPSFix = false
+
+        // 4. Start GPS — directly on this new manager, on main thread
+        newManager.startUpdatingLocation()
+        newManager.startMonitoringSignificantLocationChanges()
+        newManager.startMonitoringVisits()
+
+        // 5. Start sensors
+        svc.isBackgroundTrackingStarted = true
+        svc.startPeriodicSaveTimer()
+        svc.startPedometer()
+        svc.startActivityMonitor()
+
+        print("✅ TripTracker startLocationTracking — NEW CLLocationManager created & started on main thread")
+    }
 
     public static func willEnterForeground() {
         let svc = LocationTrackingService.shared
