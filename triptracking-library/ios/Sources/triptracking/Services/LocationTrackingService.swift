@@ -320,8 +320,9 @@ public class LocationTrackingService: NSObject {
                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
             } else {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
-                // Keep GPS at low-power — don't stop.
-                // CMMotionActivity will upgrade to Best when automotive detected.
+                // Keep GPS at low-power with distance filter to reduce callbacks
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = 10.0
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
