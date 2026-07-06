@@ -356,6 +356,14 @@ public class LogManager: NSObject {
         }
     }
 
+    /// Returns true for high-frequency system noise that should not reach the log file.
+    private func shouldSkipLine(_ line: String) -> Bool {
+        // WebView/WKWebView spam — fires hundreds of times per second
+        if line.contains("setRequestedFrameRate") { return true }
+        if line.contains("CAMetalLayerDrawable") { return true }
+        return false
+    }
+
     /// Prepend timestamp to each line before writing to file.
     /// Example: 31/03/2026 16:25:03.142 | 📍 GPS fix — acc:9m spd:12.3 m/s
     private func writeTimestampedLines(_ text: String) {
@@ -368,6 +376,9 @@ public class LogManager: NSObject {
             if line.isEmpty {
                 // Preserve blank lines (but don't timestamp them)
                 if !isLast { output += "\n" }
+            } else if shouldSkipLine(line) {
+                // Drop noisy system lines — don't write, don't add newline
+                continue
             } else {
                 let ts = timestampFormatter.string(from: Date())
                 output += "\(ts) | \(line)"
