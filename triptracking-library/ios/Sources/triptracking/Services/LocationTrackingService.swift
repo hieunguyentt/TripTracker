@@ -610,6 +610,40 @@ public class LocationTrackingService: NSObject {
         print("✅ TripTracker Background tracking started (GPS Best until first fix)")
     }
 
+    /// Stop active GPS and switch to minimal background mode.
+    /// During quiet hours (0–6 AM) with no active trip, GPS is stopped completely;
+    /// significant-location changes + visits keep the app alive.
+    /// At 6 AM the GPS restarts automatically via scheduleQuietHoursGpsRestart().
+    /// Outside quiet hours, falls back to low-power HundredMeters / 500m mode.
+    public func stopBackgroundTracking() {
+        guard !isTracking else {
+            print("⚠️ TripTracker stopBackgroundTracking ignored — trip is active")
+            return
+        }
+
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour < 6 {
+            // Quiet hours: stop GPS entirely — significant changes + visits keep app alive.
+            locationManager.stopUpdatingLocation()
+            locationManager.startMonitoringSignificantLocationChanges()
+            locationManager.startMonitoringVisits()
+            scheduleQuietHoursGpsRestart()
+            TripTrackerAPIService.shared.flushQueue()
+            print("🌙 TripTracker GPS OFF — quiet hours (0-6AM), significant changes + visits active")
+        } else {
+            // Daytime: low-power GPS mode — wakes on 500m movement only.
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            locationManager.distanceFilter  = 500
+            locationManager.startUpdatingLocation()
+            locationManager.startMonitoringSignificantLocationChanges()
+            locationManager.startMonitoringVisits()
+            print("📡 TripTracker GPS LOW-POWER — HundredMeters / 500m filter (no active trip)")
+        }
+    }
+
     public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
         guard TripTrackerAPIService.shared.isEnabled else {
             print("⚠️ TripTracker startTrip blocked — userId/pingURL not configured")
