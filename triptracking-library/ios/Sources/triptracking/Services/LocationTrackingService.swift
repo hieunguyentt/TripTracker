@@ -374,7 +374,7 @@ public class LocationTrackingService: NSObject {
                 // TERMINATED RELAUNCH + NO TRIP: Use lowest-power GPS mode.
                 // 3km accuracy + significant changes + visits keeps process alive
                 // so heartbeat timer can fire, while using minimal battery.
-                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
                 locationManager.distanceFilter  = 500
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
