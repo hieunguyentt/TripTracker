@@ -234,6 +234,8 @@ public class LocationTrackingService: NSObject {
     // MARK: - Timers / background task
     private var periodicTimer:  Timer?
     private var heartbeatTimer: Timer?
+    /// Fires at 06:00 local time to restart GPS after the quiet-hours blackout.
+    private var quietHoursRestartTimer: Timer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     // MARK: - BLE background reconnect
@@ -380,27 +382,37 @@ public class LocationTrackingService: NSObject {
                 lastGPSLocation = nil
                 print("📡 TripTracker GPS MINIMAL — still/no trip/terminated (3km accuracy, 500m filter, heartbeat alive)")
             } else {
-                // FOREGROUND/BACKGROUND + NO TRIP + STILL:
-                // Keep GPS at low-power with distance filter to reduce callbacks
-                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10.0
-                locationManager.startUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                locationManager.showsBackgroundLocationIndicator = false
-                // Flush pending pings NOW — iOS may suspend app soon at low GPS rate
-                TripTrackerAPIService.shared.flushQueue()
-                print("📡 TripTracker GPS LOW-POWER — still/no trip (NearestTenMeters + 10m filter)")
+                let hour = Calendar.current.component(.hour, from: Date())
+                let isQuietHours = hour < 6  // 00:00 – 05:59 local time
 
-                // Start still timeout — if device stays still for 5 min, stop GPS completely
-                // to save battery overnight. CMMotionActivity will restart GPS when movement detected.
-                // stillGpsTimer?.invalidate()
-                // stillGpsTimer = Timer.scheduledTimer(withTimeInterval: stillGpsTimeoutSecs, repeats: false) { [weak self] _ in
-                //     guard let self = self, !self.isTracking else { return }
-                //     self.locationManager.stopUpdatingLocation()
-                //     self.lastGPSLocation = nil
-                //     print("📡 TripTracker GPS STOPPED — still for \(Int(self.stillGpsTimeoutSecs / 60)) min, saving battery (CMMotionActivity still active)")
-                // }
+                if isQuietHours {
+                    // QUIET HOURS (midnight – 6 AM) + NO TRIP + STILL:
+                    // Stop GPS entirely. Significant-location + visit monitoring keeps iOS
+                    // from terminating the app and costs near-zero battery.
+                    // CMMotionActivity already wakes GPS the moment the device moves
+                    // (automotive state → adaptLocationAccuracy(.automotive)).
+                    locationManager.stopUpdatingLocation()
+                    locationManager.startMonitoringSignificantLocationChanges()
+                    locationManager.startMonitoringVisits()
+                    locationManager.showsBackgroundLocationIndicator = false
+                    scheduleQuietHoursGpsRestart()
+                    TripTrackerAPIService.shared.flushQueue()
+                    print("🌙 TripTracker GPS OFF — quiet hours (0-6AM), significant changes + visits active")
+                } else {
+                    // FOREGROUND/BACKGROUND + NO TRIP + STILL:
+                    // Keep GPS at low-power with distance filter to reduce callbacks.
+                    quietHoursRestartTimer?.invalidate()
+                    quietHoursRestartTimer = nil
+                    locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                    locationManager.distanceFilter  = 10.0
+                    locationManager.startUpdatingLocation()
+                    locationManager.startMonitoringSignificantLocationChanges()
+                    locationManager.startMonitoringVisits()
+                    locationManager.showsBackgroundLocationIndicator = false
+                    // Flush pending pings NOW — iOS may suspend app soon at low GPS rate
+                    TripTrackerAPIService.shared.flushQueue()
+                    print("📡 TripTracker GPS LOW-POWER — still/no trip (NearestTenMeters + 10m filter)")
+                }
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
@@ -424,9 +436,12 @@ public class LocationTrackingService: NSObject {
             }
 
         case .automotive:
-            // Best accuracy for driving — GPS always alive
+            // Best accuracy for driving — GPS always alive.
+            // Cancel quiet-hours restart timer: GPS is already running.
             stillGpsTimer?.invalidate()
             stillGpsTimer = nil
+            quietHoursRestartTimer?.invalidate()
+            quietHoursRestartTimer = nil
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter  = kCLDistanceFilterNone
             locationManager.startUpdatingLocation()
@@ -1276,6 +1291,33 @@ public class LocationTrackingService: NSObject {
             print("💓 TripTracker heartbeat → JS wake (\(ts))")
         })
         RunLoop.main.add(heartbeatTimer!, forMode: .common)
+    }
+
+    /// Schedule a one-shot timer that fires at 06:00 local time to restart GPS
+    /// after the quiet-hours (0–6 AM) blackout. If the timer is already scheduled
+    /// it is replaced so there is never more than one outstanding.
+    private func scheduleQuietHoursGpsRestart() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.scheduleQuietHoursGpsRestart() }
+            return
+        }
+        quietHoursRestartTimer?.invalidate()
+
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour   = 6
+        components.minute = 0
+        components.second = 0
+        guard let fireDate = Calendar.current.date(from: components) else { return }
+        let delay = max(fireDate.timeIntervalSinceNow, 60)  // at least 60s so it doesn't fire immediately
+
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            guard let self = self, !self.isTracking else { return }
+            print("🌅 TripTracker GPS RESTARTED — quiet hours ended (6AM)")
+            self.adaptLocationAccuracy(for: self.lastMotionState)
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        quietHoursRestartTimer = timer
+        print("🌙 TripTracker Quiet-hours GPS restart scheduled in \(Int(delay / 60))m")
     }
 
     /// Start a manual heartbeat timer with a configurable interval.
