@@ -1631,7 +1631,16 @@ public class LocationTrackingService: NSObject {
 
         print("🤖  TripTracker Auto-start trip — \(reason)")
 
-        let initialLocation = lastKnownLocation ?? locationManager.location
+        // Only use lastKnownLocation if it is fresh (< 30s old).
+        // A stale cached location (hours or days old) produces a GPS jump: the trip
+        // gets seeded at the old position and the first real GPS fix (1–2 km away)
+        // is immediately pinged as the start point.
+        let initialLocation: CLLocation?
+        if let loc = lastKnownLocation, abs(loc.timestamp.timeIntervalSinceNow) < 30 {
+            initialLocation = loc
+        } else {
+            initialLocation = nil  // startTrip() will wait for a fresh GPS fix
+        }
         startTrip(withInitialLocation: initialLocation)
 
         // Local push notification
@@ -2179,6 +2188,18 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         if locationAge > 60 {
             print("📡 TripTracker sendAPIPing skipped — location is \(Int(locationAge))s old (stale)")
             return
+        }
+
+        // Cold-start accuracy gate: during the first 30s of a trip the GPS chip
+        // often delivers fixes with 30–100m accuracy. A zero-speed fix at that
+        // accuracy level is GPS warm-up noise, not a real vehicle position.
+        // Sending it would produce a 1–2 km jump between seed and first real fix.
+        if let start = tripStartTime {
+            let tripAge = Date().timeIntervalSince(start)
+            if tripAge < 30 && location.accuracy > 25 && max(0, speed) == 0 {
+                print("⚠️ TripTracker First-ping accuracy gate — acc:\(Int(location.accuracy))m > 25m at \(Int(tripAge))s, skipped")
+                return
+            }
         }
 
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
