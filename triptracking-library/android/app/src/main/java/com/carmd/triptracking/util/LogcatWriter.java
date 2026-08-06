@@ -71,10 +71,16 @@ public final class LogcatWriter {
                 writer = openWriter(logFile);
                 writeSessionHeader(writer);
 
+                // Grow the logcat ring buffer so high-volume bursts don't get
+                // dropped before we can read them. Best-effort — ignore failures.
+                try {
+                    Runtime.getRuntime().exec("logcat -G 16M").waitFor();
+                } catch (Exception ignored) { }
+
                 // Clear logcat buffer first so we don't re-capture old entries
                 Runtime.getRuntime().exec("logcat -c").waitFor();
 
-                // Start logcat filtered to our PID
+                // Start logcat filtered to our PID — no -v flag truncation, no line filtering
                 int pid = android.os.Process.myPid();
                 process = Runtime.getRuntime().exec(
                         "logcat -v threadtime --pid=" + pid);
@@ -84,9 +90,6 @@ public final class LogcatWriter {
 
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // Skip high-frequency WebView/Chromium noise that bloats log files
-                    if (shouldSkipLine(line)) continue;
-
                     // Check for date rollover
                     String now = todayStr();
                     if (!now.equals(sCurrentDate)) {
@@ -237,13 +240,6 @@ public final class LogcatWriter {
     /** Zip all log files. */
     public static File getZippedLogs(Context context) {
         return getZippedLogs(context, 3);
-    }
-
-    private static boolean shouldSkipLine(String line) {
-        // Chromium/WebView spam — fires hundreds of times per second
-        if (line.contains("setRequestedFrameRate")) return true;
-        if (line.contains("CapacitorWebView") && line.contains("setRequestedFrameRate")) return true;
-        return false;
     }
 
     private static void cleanupOldLogs(File cacheDir, int retainDays) {
