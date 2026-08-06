@@ -194,11 +194,31 @@ public class TripTrackerCapPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    // logd truncates any single entry at ~4076 bytes; split longer messages
+    // into multiple lines so nothing gets cut off.
+    private static final int LOG_CHUNK_SIZE = 4000;
+
     @PluginMethod
     public void writeLog(PluginCall call) {
         String message = call.getString("message", "");
-        android.util.Log.i("⚡️ [Ionic] ", message);
+        logChunked("⚡️ [Ionic] ", message);
         call.resolve();
+    }
+
+    private static void logChunked(String tag, String message) {
+        if (message == null) message = "";
+        int length = message.length();
+        if (length <= LOG_CHUNK_SIZE) {
+            android.util.Log.i(tag, message);
+            return;
+        }
+
+        int chunkCount = (int) Math.ceil((double) length / LOG_CHUNK_SIZE);
+        for (int i = 0; i < chunkCount; i++) {
+            int start = i * LOG_CHUNK_SIZE;
+            int end = Math.min(start + LOG_CHUNK_SIZE, length);
+            android.util.Log.i(tag, "[" + (i + 1) + "/" + chunkCount + "] " + message.substring(start, end));
+        }
     }
 
     @PluginMethod
