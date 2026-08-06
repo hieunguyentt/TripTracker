@@ -194,9 +194,10 @@ public class TripTrackerCapPlugin extends Plugin {
         call.resolve(ret);
     }
 
-    // logd truncates any single entry at ~4076 bytes; split longer messages
-    // into multiple lines so nothing gets cut off.
-    private static final int LOG_CHUNK_SIZE = 4000;
+    // logd truncates any single entry at ~4076 bytes (UTF-8, whole entry
+    // including tag); split longer messages into multiple lines so nothing
+    // gets cut off, regardless of how much of the payload is multi-byte.
+    private static final int LOG_CHUNK_BYTES = 3500;
 
     @PluginMethod
     public void writeLog(PluginCall call) {
@@ -207,17 +208,27 @@ public class TripTrackerCapPlugin extends Plugin {
 
     private static void logChunked(String tag, String message) {
         if (message == null) message = "";
-        int length = message.length();
-        if (length <= LOG_CHUNK_SIZE) {
+        byte[] bytes = message.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (bytes.length <= LOG_CHUNK_BYTES) {
             android.util.Log.i(tag, message);
             return;
         }
 
-        int chunkCount = (int) Math.ceil((double) length / LOG_CHUNK_SIZE);
-        for (int i = 0; i < chunkCount; i++) {
-            int start = i * LOG_CHUNK_SIZE;
-            int end = Math.min(start + LOG_CHUNK_SIZE, length);
-            android.util.Log.i(tag, "[" + (i + 1) + "/" + chunkCount + "] " + message.substring(start, end));
+        List<String> chunks = new ArrayList<>();
+        int offset = 0;
+        while (offset < bytes.length) {
+            int end = Math.min(offset + LOG_CHUNK_BYTES, bytes.length);
+            // Don't split in the middle of a multi-byte UTF-8 sequence —
+            // back off until we land on a lead byte (not a 10xxxxxx continuation byte).
+            while (end > offset && end < bytes.length && (bytes[end] & 0xC0) == 0x80) {
+                end--;
+            }
+            chunks.add(new String(bytes, offset, end - offset, java.nio.charset.StandardCharsets.UTF_8));
+            offset = end;
+        }
+
+        for (int i = 0; i < chunks.size(); i++) {
+            android.util.Log.i(tag, "[" + (i + 1) + "/" + chunks.size() + "] " + chunks.get(i));
         }
     }
 
